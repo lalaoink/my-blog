@@ -1,0 +1,30 @@
+{
+  // VS Code 工作区设置。这些值针对「前端项目」调整过，
+  // 和你平时写 C++ 的习惯不一样，所以单独放这里，不动你的全局设置。
+
+  // 前端世界约定用 2 个空格缩进，不是 C++ 习惯的 4 个
+  "editor.tabSize": 2,
+  "editor.detectIndentation": false,
+
+  // 强制 UTF-8，且不写 BOM。
+  // ⭐ 这两条很重要：本机 PowerShell 5.1 写文件会带 BOM，
+  //    而带 BOM 的 JSON 会让 Astro 构建报 "Unexpected token ''"（见 docs/04 坑 2）
+  "files.encoding": "utf8",
+  "files.eol": "\n",
+
+  // 保存时自动格式化。新手很难维持缩进整洁，交给编辑器
+  "editor.formatOnSave": true,
+
+  // 让 Emmet 在 .astro 文件里也能用
+  // （Emmet 是「输入 ul>li*3 按 Tab 就展开成三层列表」的缩写语法，值得学）
+  "emmet.includeLanguages": {
+    "astro": "html"
+  },
+
+  // 前端项目文件多，隐藏掉噪音目录，侧边栏看得清
+  "files.exclude": {
+    "**/node_modules": true,
+    "**/.astro": true,
+    "**/dist": true
+  }
+}

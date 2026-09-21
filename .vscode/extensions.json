@@ -1,0 +1,12 @@
+{
+  // 这个文件让项目「自带编辑器配置」。
+  // 别人 clone 你的仓库时，VS Code 会提示他安装推荐的扩展。
+  // 提交到 Git 是正确做法（它属于项目配置，不是个人偏好）。
+  "recommendations": [
+    // Astro 官方扩展：.astro 文件的语法高亮、补全、格式化和错误提示
+    "astro-build.astro-vscode",
+    // 给纯 HTML 文件用的：右下角会出现 "Go Live" 按钮，一键在浏览器打开并热重载
+    "ritwickdey.LiveServer"
+  ],
+  "unwantedRecommendations": []
+}

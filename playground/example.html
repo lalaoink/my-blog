@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<!--
+  ============================================================
+  这是给你的「参考示例」，不是作业。
+  你可以随便改、改坏、删掉重来 —— 它删了也能再要一份。
+
+  看的时候建议：
+    1. 用浏览器双击打开它，点一下按钮
+    2. 按 F12 打开开发者工具，看 Elements 面板
+    3. 再回来看下面的注释
+  ============================================================
+-->
+<html lang="zh-CN">
+<head>
+  <!--
+    meta charset 必须放在最前面。
+    它的意思是"这个文件是用 UTF-8 编码存的"，浏览器据此解码。
+    少了这一行，中文可能显示成乱码。
+    ⭐ 你自己写页面时，这一行永远第一个写。
+  -->
+  <meta charset="utf-8" />
+
+  <!-- 手机浏览器上的缩放规则。先照抄，阶段 3 再讲 -->
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <!-- 显示在浏览器标签页上的文字 -->
+  <title>我的第一个页面</title>
+
+  <!--
+    <style> 里是 CSS（负责"长什么样"）。
+    C++ 里没有对应物 —— 它既不是数据也不是逻辑，是"渲染指令"。
+
+    语法是：  选择器 { 属性: 值; }
+    下面 `body` 就是选择器，意思是"作用于 <body> 这个标签"。
+  -->
+  <style>
+    body {
+      /* 字体栈：从左往右找，找到哪个用哪个 */
+      font-family: "Microsoft YaHei", "PingFang SC", sans-serif;
+      /* 65ch ≈ 一行 65 个字符宽。这是参考站的核心排版技巧（见 docs/03） */
+      max-width: 65ch;
+      /* margin: auto 让这个块在页面里水平居中 */
+      margin: auto;
+      padding: 20px;
+      line-height: 1.6;
+      color: #444;
+    }
+    h1 {
+      color: #222;
+    }
+    /* 用 # 选中 id。这里选中 id="btn" 的那个按钮 */
+    #btn {
+      font-size: 16px;
+      padding: 8px 16px;
+      border: 2px solid #222;
+      border-radius: 7px;
+      background: #fff;
+      cursor: pointer;
+    }
+    /* :hover 是"鼠标悬停时"的伪类 */
+    #btn:hover {
+      background: #222;
+      color: #fff;
+    }
+  </style>
+</head>
+
+<body>
+  <!--
+    从这里开始是 HTML（负责"有什么内容"）。
+    它在 C++ 里最接近"声明一批数据结构" —— 只是描述结构，不是执行逻辑。
+
+    注意 id="xxx" 这个属性：它给这个标签起个名字，
+    好让后面的 JS 能精确找到它。类似给变量起名。
+  -->
+  <h1 id="title">你好，这是我的第一个页面</h1>
+
+  <!-- <ul> = unordered list（无序列表），里面每项是一个 <li> -->
+  <ul>
+    <li>C++ 笔记</li>
+    <li>前端学习记录</li>
+    <li>番剧杂谈</li>
+  </ul>
+
+  <button id="btn">点我一下</button>
+
+  <!--
+    <script> 里是 JavaScript（负责"做什么"）。
+    它放在 </body> 前面，是为了让浏览器先把上面的标签都解析完，
+    这样下面 getElementById 才找得到它们。
+    （放在 <head> 里也行，但要额外处理"等页面加载完"，阶段 2 再讲）
+
+    ⚠️ 关键区别：这三块里，只有 JS 是"真正会执行逻辑"的代码。
+       HTML/CSS 都只是描述。
+  -->
+  <script>
+    // document 就是"整个页面"这个对象。
+    // getElementById('title') = 找到 id 为 title 的那个标签。
+    // 类比 C++：像是从一个全局容器里按 key 取出一个对象。
+    const title = document.getElementById('title');
+    const btn = document.getElementById('btn');
+
+    // addEventListener = "当某件事发生时，执行这个函数"。
+    // 第一个参数是事件名（'click' = 点击），第二个参数是回调函数。
+    // ⭐ 这就是前端最核心的心智模型：
+    //    不是从上到下跑完就结束，而是"注册一堆回调，然后等事件发生"。
+    let count = 0;
+
+    btn.addEventListener('click', () => {
+      count = count + 1;
+      // textContent = 改这个标签里的文字
+      title.textContent = `你点了 ${count} 次`;
+    });
+  </script>
+</body>
+</html>
+
+<!--
+  ============================================================
+  接下来轮到你（这是作业，但很小）：
+
+  1. 把本文件复制一份，改名成  index.html
+  2. 只改三个地方：
+       a) <ul> 里的三个 <li>  → 改成你自己想写的三类文章
+       b) 按钮文字 "点我一下"   → 改成你喜欢的
+       c) 点击后显示的文字      → 改成你喜欢的
+  3. 双击打开，点按钮，确认改对了
+
+  改完把 index.html 发我。就这样，不用做别的。
+  ============================================================
+-->
