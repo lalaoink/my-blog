@@ -1,0 +1,28 @@
+# 让 Git 统一管理换行符。
+#
+# 为什么必须有这个文件：
+#   Windows 用 CRLF（\r\n）表示换行，Linux/macOS 用 LF（\n）。
+#   不统一的话会有两个后果：
+#     1. 每次跨平台提交都会显示"整个文件都被改了"，其实是假 diff
+#     2. Shell 脚本带 CRLF 会在 Linux 上直接报错：
+#        /bin/bash^M: bad interpreter
+#
+#   第 2 条对本项目是真实风险 —— 阶段 5 的 Bangumi 拉取脚本
+#   将在 Linux 的 GitHub Actions 上运行。
+
+# 所有文本文件：自动识别，且一律以 LF 存储和检出
+* text=auto eol=lf
+
+# 明确标出二进制文件，Git 不要尝试做换行转换
+*.png   binary
+*.jpg   binary
+*.jpeg  binary
+*.gif   binary
+*.webp  binary
+*.ico   binary
+*.woff  binary
+*.woff2 binary
+*.ttf   binary
+
+# 锁定 lockfile 的换行，避免 npm 与 git 打架
+package-lock.json text eol=lf
