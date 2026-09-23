@@ -1,0 +1,127 @@
+---
+// ============================================================
+//  这是一个【布局组件】的参考示例（layouts）。
+//
+//  什么时候需要它？
+//    当你有了第 2、3 个页面，你会发现每个页面都在重复同一段
+//    <head>、<style>、<nav>、<footer>。改一次要改好几个文件。
+//    布局组件就是把这层"外壳"抽出来，只写一遍。
+//
+//  ⚠️ 这个文件放在 playground/ 里只是给你读的。
+//     真正要用时，它应该放在 src/layouts/BaseLayout.astro
+// ============================================================
+
+// Astro.props 相当于 C++ 里传给函数的参数。
+// 这里用解构 + 默认值：调用方传了 title 就用它，没传就用默认值。
+// 类比 C++:  void BaseLayout(std::string title = "默认标题")
+const { title = "言与叶之庭", description = "文章与教程" } = Astro.props;
+---
+
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>{title}</title>
+    <meta name="description" content={description} />
+
+    <style>
+      /* 这些样式原来在每个页面里都写了一遍，现在只写这一处 */
+      body {
+        font-family: "Microsoft YaHei", "PingFang SC", sans-serif;
+        max-width: 65ch;
+        margin: auto;
+        padding: 20px;
+        line-height: 1.6;
+        color: #444;
+        /* main 撑开高度，把 footer 顶到页面底部 */
+        display: flex;
+        flex-direction: column;
+        min-height: 100vh;
+      }
+      h1, h2, h3 { color: #222; }
+      a { color: #316fd3; text-decoration: none; }
+      a:hover { text-decoration: underline; }
+
+      /* 导航条 —— 这个渐变来自参考站 wordland.site，见 docs/03 */
+      nav {
+        background-image: linear-gradient(
+          135deg,
+          #2655b9 0%, #316fd3 38%, #316fd3 52%,
+          #59a6ff 52%, #59a6ff 58%, #8dbeff 68%,
+          #f3ec86 68%, #f3ec86 100%
+        );
+        background-size: 110% 200%;
+        border-radius: 8px;
+        color: #fff;
+        padding: 6px 12px;
+      }
+      nav a { color: #fff; font-weight: 700; margin: 5px 6px; display: inline-block; }
+
+      main { flex: 1; }               /* 占满剩余空间 */
+      footer { text-align: center; opacity: .9; margin: 70px 0 50px; font-size: .9em; }
+    </style>
+  </head>
+
+  <body>
+    <!--
+      导航条：所有页面共用。
+      注意链接地址 —— / 和 /about 就对应 src/pages/ 里的文件。
+    -->
+    <nav>
+      <a href="/">首页</a>
+      <a href="/about">关于</a>
+      <a href="/posts">文章</a>
+    </nav>
+
+    <main>
+      <!--
+        ★★★ 这里是关键 ★★★
+
+        <slot /> 是"占位符"：调用方的内容会被塞进这个位置。
+
+        类比 C++：有点像函数模板里的一个"回调点"，
+        或者干脆理解成"这里挖个洞，谁用谁填"。
+
+        所以布局组件 = 固定外壳 + 一个可变内容区。
+      -->
+      <slot />
+    </main>
+
+    <footer>
+      © 2026 言与叶之庭
+    </footer>
+  </body>
+</html>
+
+<!--
+  ============================================================
+  【怎么用这个布局】（等你有了第 2 个页面再来做）
+
+  1. 把它另存为  src/layouts/BaseLayout.astro
+
+  2. 把 src/pages/index.astro 的内容改写成：
+
+     ---
+     import BaseLayout from "../layouts/BaseLayout.astro";
+     const posts = ["js 笔记", "前端学习记录", "bangumi怎么把我墙了"];
+     ---
+     <BaseLayout title="言与叶之庭">
+       <h1>言与叶之庭</h1>
+       <ul>{posts.map((p) => <li>{p}</li>)}</ul>
+     </BaseLayout>
+
+  3. 新建 src/pages/about.astro：
+
+     ---
+     import BaseLayout from "../layouts/BaseLayout.astro";
+     ---
+     <BaseLayout title="关于我">
+       <h1>关于我</h1>
+       <p>这里写自我介绍。</p>
+     </BaseLayout>
+
+  ★ 对比一下你现在的写法：
+    现在 index.astro 里那一大段 <style> 和 <head>，将来只需要存在于
+    BaseLayout.astro 一个文件里。两个页面都自动拥有同样的导航条和样式。
+  ============================================================
+-->
