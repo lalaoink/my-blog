@@ -19,4 +19,14 @@ export default defineConfig({
 
   // 构建产物：纯静态 HTML，不需要服务器
   output: "static",
+
+  markdown: {
+    shikiConfig: {
+      // Astro 默认用 github-dark（深色代码块），
+      // 和本站的浅色极简风不搭，换成浅色主题。
+      theme: "github-light",
+      // 代码块超出宽度时允许横向滚动，而不是撑破版面
+      wrap: false,
+    },
+  },
 });
