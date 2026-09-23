@@ -36,6 +36,10 @@ jobs:
       - name: 拉取 Bangumi 收藏
         env:
           BANGUMI_USERNAME: "765864"
+          # 令牌存在仓库 Secrets 里：Settings → Secrets and variables →
+          # Actions → New repository secret，名字必须叫 BANGUMI_TOKEN。
+          # 收藏设为私密时必须有它，否则接口只会返回 0 条。
+          BANGUMI_TOKEN: ${{ secrets.BANGUMI_TOKEN }}
         run: node scripts/fetch-bangumi.mjs
 
       - name: 有变化才提交
