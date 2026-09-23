@@ -1,0 +1,54 @@
+name: 更新 Bangumi 追番数据
+
+# 为什么要在 GitHub Actions 上跑：
+#   你的本机网络访问不了 bgm.tv（DNS 污染 + 真实 IP 不可达）。
+#   Actions 的服务器在境外，可以直连，所以把拉取放在这里。
+#
+# 产出：src/data/bangumi.json 提交回仓库。
+#       网站构建时只读这个本地 JSON，因此本地离线也能构建。
+
+on:
+  schedule:
+    # UTC 20:00 = 北京时间次日 04:00，每天一次
+    - cron: "0 20 * * *"
+  # 允许在 Actions 页面手动点击运行
+  workflow_dispatch:
+
+# 需要写权限才能把更新后的 JSON 提交回仓库
+permissions:
+  contents: write
+
+jobs:
+  update-bangumi:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: 检出仓库
+        uses: actions/checkout@v4
+
+      - name: 安装 Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      # 这个脚本只依赖 Node 内置模块（fetch + fs），不需要 npm install，
+      # 所以跑得非常快，也不会因为依赖问题失败。
+      - name: 拉取 Bangumi 收藏
+        env:
+          BANGUMI_USERNAME: "765864"
+        run: node scripts/fetch-bangumi.mjs
+
+      - name: 有变化才提交
+        run: |
+          git config user.name  "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+          git add src/data/bangumi.json
+
+          if git diff --staged --quiet; then
+            echo "数据没有变化，跳过提交。"
+          else
+            git commit -m "chore(bangumi): 自动更新追番数据 [skip ci]"
+            git push
+            echo "已提交更新。"
+          fi

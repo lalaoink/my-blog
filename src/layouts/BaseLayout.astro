@@ -1,0 +1,130 @@
+---
+// ============================================================
+//  全站布局外壳：导航条 + 页脚 + 桌宠 + 全局样式
+//
+//  ⚠️ 这个文件里的代码全部在【构建时】执行（frontmatter 部分），
+//     只有 <script> 里的代码会发到浏览器。
+// ============================================================
+import "../styles/global.css";
+import DesktopPet from "../components/DesktopPet.astro";
+
+interface Props {
+  title?: string;
+  description?: string;
+}
+
+const {
+  title = "言与叶之庭",
+  description = "在字与叶之间，搭一座庭园。",
+} = Astro.props;
+
+// 页面标题：首页就用站名本身，内页用「页名 | 站名」
+const fullTitle = title === "言与叶之庭" ? title : `${title} | 言与叶之庭`;
+
+const site = Astro.site?.toString().replace(/\/$/, "");
+const canonical = site ? new URL(Astro.url.pathname, site).toString() : null;
+
+// 导航项
+const navItems = [
+  { href: "/", label: "首页" },
+  { href: "/posts", label: "文章" },
+  { href: "/bangumi", label: "追番" },
+  { href: "/about", label: "关于" },
+];
+---
+
+<!DOCTYPE html>
+<html lang="zh-Hans-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+
+    <title>{fullTitle}</title>
+    <meta name="description" content={description} />
+    {canonical && <link rel="canonical" href={canonical} />}
+
+    <!-- Open Graph：分享到社交平台时的预览信息 -->
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content={fullTitle} />
+    <meta property="og:description" content={description} />
+    {canonical && <meta property="og:url" content={canonical} />}
+
+    <meta name="generator" content={Astro.generator} />
+  </head>
+
+  <body>
+    <header>
+      <nav id="main-nav">
+        <div id="inner-nav-box" class="hover-all-children">
+          {
+            navItems.map((item) => (
+              <a
+                href={item.href}
+                class="pushable"
+                aria-current={Astro.url.pathname === item.href ? "page" : undefined}
+              >
+                {item.label}
+              </a>
+            ))
+          }
+        </div>
+      </nav>
+    </header>
+
+    <main class="slide-enter-content">
+      <slot />
+    </main>
+
+    <footer>
+      <p>© {new Date().getFullYear()} 言与叶之庭</p>
+      <p style="font-size:.85em">
+        用 <a href="https://astro.build" rel="noopener">Astro</a> 搭建 ·
+        桌宠素材来自
+        <a href="https://github.com/chenthreegold/deepseek-whale-pet" rel="noopener">deepseek-whale-pet</a>（MIT）
+      </p>
+    </footer>
+
+    <!-- 桌宠：这是一个「岛屿」，必须发到浏览器才能交互 -->
+    <DesktopPet />
+  </body>
+</html>
+
+<script>
+  // ============================================================
+  //  导航条的鼠标视差 —— 参考站的这个效果只用了三行核心逻辑：
+  //  background-size 留了 10% 余量，所以平移背景不会露白。
+  // ============================================================
+  const nav = document.getElementById("main-nav");
+  const inner = document.getElementById("inner-nav-box");
+
+  if (nav) {
+    // 只有精确指针设备（鼠标）才启用，触屏上没意义
+    const finePointer = window.matchMedia("(pointer: fine)").matches;
+
+    if (finePointer) {
+      nav.addEventListener("mousemove", (e) => {
+        const rect = nav.getBoundingClientRect();
+        let shift = e.clientX - rect.left - 600;
+        // 阻尼 0.2 + 夹取到 [-50, 0]
+        shift = Math.min(Math.max(shift * 0.2, -50), 0);
+        nav.style.backgroundPosition = `${shift}px 0px`;
+      });
+
+      nav.addEventListener("mouseleave", () => {
+        nav.style.backgroundPosition = "0px 0px";
+      });
+    }
+
+    // 整条导航条 hover 时，未悬停的链接变淡
+    if (inner) {
+      inner.addEventListener("mouseover", (e) => {
+        if (e.target !== inner) inner.classList.add("hover-all-children");
+      });
+      inner.addEventListener("mouseout", (e) => {
+        const to = e.relatedTarget;
+        if (to && !inner.contains(to)) inner.classList.remove("hover-all-children");
+      });
+    }
+  }
+</script>

@@ -1,38 +1,48 @@
 ---
-import BaseLayout from "../layouts/BaseLayout.astro";
+import BaseLayout from "../../layouts/BaseLayout.astro";
 import { getCollection } from "astro:content";
 
-// 取所有非草稿文章，按日期倒序（新的在前）
 const all = await getCollection("blog", ({ data }) => !data.draft);
 const posts = all.sort((a, b) => b.data.date.valueOf() - a.data.date.valueOf());
-const recent = posts.slice(0, 5);
 
-// 日期格式：2026/09/23（和参考站一致）
 const fmt = (d: Date) =>
   `${d.getFullYear()}/${String(d.getMonth() + 1).padStart(2, "0")}/${String(d.getDate()).padStart(2, "0")}`;
+
+// 收集所有标签，供筛选
+const tagCount = new Map<string, number>();
+for (const p of posts) {
+  for (const t of p.data.tags) tagCount.set(t, (tagCount.get(t) ?? 0) + 1);
+}
+const tags = [...tagCount.entries()].sort((a, b) => b[1] - a[1]);
 ---
 
-<BaseLayout>
-  <h1>言与叶之庭</h1>
-
-  <p><em>把散落的字拾起来，种在叶子底下。</em></p>
-  <p>
-    这里放我自己写的文章与教程。想到什么写什么，写得慢，但都是真的。
-  </p>
-
-  <h2>最近</h2>
+<BaseLayout title="文章" description="全部文章与教程">
+  <h1>文章列表</h1>
 
   {
-    recent.length === 0 ? (
+    tags.length > 0 && (
+      <p>
+        {tags.map(([t, n]) => (
+          <span class="tag">
+            {t} · {n}
+          </span>
+        ))}
+      </p>
+    )
+  }
+
+  {
+    posts.length === 0 ? (
       <div class="empty-state">
         <p>还没有文章。</p>
         <p style="font-size:.9em">
-          去 <code>src/content/blog/</code> 里新建一个 <code>.md</code> 文件，它就会出现在这里。
+          在 <code>src/content/blog/</code> 新建 <code>.md</code> 文件即可，例如
+          <code>hello.md</code>。
         </p>
       </div>
     ) : (
       <div class="slide-enter-content">
-        {recent.map((post) => (
+        {posts.map((post) => (
           <a class="post-item" href={`/posts/${post.id}`}>
             <div class="post-title">{post.data.title}</div>
             <div class="post-meta">
@@ -46,6 +56,6 @@ const fmt = (d: Date) =>
   }
 
   <p style="margin-top:24px">
-    <a class="pushable" href="/posts">→ 全部文章</a>
+    <a class="pushable" href="/">← 回到首页</a>
   </p>
 </BaseLayout>

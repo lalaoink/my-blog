@@ -1,0 +1,21 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="言与叶之庭">
+  <defs>
+    <linearGradient id="sea" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#2655b9"/>
+      <stop offset="52%" stop-color="#316fd3"/>
+      <stop offset="58%" stop-color="#59a6ff"/>
+      <stop offset="72%" stop-color="#8dbeff"/>
+      <stop offset="72%" stop-color="#f3ec86"/>
+      <stop offset="100%" stop-color="#f3ec86"/>
+    </linearGradient>
+  </defs>
+  <rect width="64" height="64" rx="14" fill="url(#sea)"/>
+  <!-- 鲸鱼身体 -->
+  <path d="M13 37c0-7.9 7.9-14.3 17.6-14.3S48.2 29.1 48.2 37c0 1.2-1 2.1-2.1 2.1h-.9C42.4 44.3 36.9 47.4 30.6 47.4S18.8 44.3 16 39.1h-.9C14 39.1 13 38.2 13 37z" fill="#fff"/>
+  <!-- 尾巴 -->
+  <path d="M48.6 31.6l9-5.9v16.4l-9-5.9z" fill="#fff"/>
+  <!-- 眼睛 -->
+  <circle cx="24" cy="31.6" r="2.7" fill="#2655b9"/>
+  <!-- 水柱 -->
+  <path d="M29 20.5c-.4-3 1.6-4.6 1.4-7.6M29 20.5c1.6-2.2 4.2-2.4 5.4-5.2" stroke="#fff" stroke-width="2.4" stroke-linecap="round" fill="none"/>
+</svg>

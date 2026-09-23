@@ -1,0 +1,164 @@
+---
+import BaseLayout from "../../layouts/BaseLayout.astro";
+import { getCollection, render } from "astro:content";
+
+// 构建时生成所有文章页面：一个文件 → 无数网址
+export async function getStaticPaths() {
+  const posts = await getCollection("blog", ({ data }) => !data.draft);
+  const sorted = posts.sort(
+    (a, b) => b.data.date.valueOf() - a.data.date.valueOf()
+  );
+
+  return sorted.map((post, i) => ({
+    params: { id: post.id },
+    props: {
+      post,
+      // 相邻文章，用来做上下篇导航
+      prev: sorted[i + 1] ?? null, // 更旧的一篇
+      next: sorted[i - 1] ?? null, // 更新的一篇
+    },
+  }));
+}
+
+const { post, prev, next } = Astro.props;
+const { Content, headings } = await render(post);
+
+const fmt = (d: Date) =>
+  `${d.getFullYear()}/${String(d.getMonth() + 1).padStart(2, "0")}/${String(d.getDate()).padStart(2, "0")}`;
+
+// 只取二三级标题做目录
+const toc = headings.filter((h) => h.depth === 2 || h.depth === 3);
+---
+
+<BaseLayout title={post.data.title} description={post.data.description}>
+  <article>
+    <h1>{post.data.title}</h1>
+
+    <p>
+      <time>{fmt(post.data.date)}</time>
+      {
+        post.data.tags.length > 0 && (
+          <>
+            {" · "}
+            {post.data.tags.map((t) => (
+              <span class="tag">{t}</span>
+            ))}
+          </>
+        )
+      }
+    </p>
+
+    {
+      post.data.description && (
+        <blockquote>
+          <p>{post.data.description}</p>
+        </blockquote>
+      )
+    }
+
+    {
+      toc.length > 2 && (
+        <details class="toc">
+          <summary>目录</summary>
+          <ul>
+            {toc.map((h) => (
+              <li class={`depth-${h.depth}`}>
+                <a href={`#${h.slug}`}>{h.text}</a>
+              </li>
+            ))}
+          </ul>
+        </details>
+      )
+    }
+
+    <div class="prose">
+      <Content />
+    </div>
+
+    <hr />
+
+    <nav class="postnav">
+      {
+        prev ? (
+          <a class="pushable" href={`/posts/${prev.id}`}>
+            ← {prev.data.title}
+          </a>
+        ) : (
+          <span />
+        )
+      }
+      {
+        next ? (
+          <a class="pushable" href={`/posts/${next.id}`} style="text-align:right">
+            {next.data.title} →
+          </a>
+        ) : (
+          <span />
+        )
+      }
+    </nav>
+
+    <p style="margin-top:24px">
+      <a class="pushable" href="/posts">← 全部文章</a>
+    </p>
+  </article>
+</BaseLayout>
+
+<style>
+  /* 正文排版：只作用于 Markdown 渲染出来的内容 */
+  .prose :global(h2) {
+    margin-top: 1.8em;
+    border-bottom: 2px solid var(--very-dark-gray);
+    padding-bottom: 4px;
+  }
+  .prose :global(h3) { margin-top: 1.5em; }
+
+  .prose :global(p) { line-height: 1.7; }
+
+  .prose :global(pre) {
+    background: #f6f6f4;
+    border: 2px solid var(--very-dark-gray);
+    border-radius: 8px;
+    padding: 12px;
+    overflow-x: auto;
+    font-size: 0.9em;
+    line-height: 1.5;
+  }
+  .prose :global(code) {
+    font-family: var(--mono-more);
+    font-size: 0.92em;
+  }
+  /* 行内代码：不在 pre 里的那些 */
+  .prose :global(:not(pre) > code) {
+    background: #f0efec;
+    border-radius: 4px;
+    padding: 1px 5px;
+  }
+  .prose :global(img) {
+    border: 2px solid var(--very-dark-gray);
+    border-radius: 8px;
+  }
+  .prose :global(ul),
+  .prose :global(ol) { padding-left: 1.4em; }
+  .prose :global(li) { margin: 4px 0; }
+
+  .toc {
+    border: 2px solid var(--gray);
+    border-radius: 8px;
+    padding: 8px 14px;
+    font-size: 0.92em;
+    margin: 1.4em 0;
+  }
+  .toc summary { cursor: pointer; font-weight: 700; }
+  .toc ul { margin: 8px 0 0; padding-left: 1.2em; }
+  .toc .depth-3 { margin-left: 1em; font-size: 0.95em; }
+
+  .postnav {
+    display: flex;
+    justify-content: space-between;
+    gap: 12px;
+    margin-top: 1.4em;
+    font-size: 0.95em;
+  }
+  .postnav a { max-width: 46%; }
+</style>

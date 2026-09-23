@@ -1,0 +1,42 @@
+---
+import BaseLayout from "../layouts/BaseLayout.astro";
+---
+
+<BaseLayout title="关于" description="关于言与叶之庭和它的主人">
+  <h1>关于</h1>
+
+  <h2>这个站</h2>
+  <p>
+    叫「言与叶之庭」。放我写的东西：技术笔记、教程，以及一些不成体系的想法。
+  </p>
+  <p>
+    版式参考了朋友的站，用 <a href="https://astro.build" rel="noopener">Astro</a> 搭建，
+    部署在 Netlify 上。整个站是静态的——所有页面都在构建时生成成 HTML，
+    不依赖服务器，也不需要数据库。
+  </p>
+
+  <h2>关于我</h2>
+  <p>
+    主要写 C++，最近在学前端。这个博客本身就是一个练习：
+    边学边写，写错了就改，改了再写。
+  </p>
+
+  <h2>这个小东西</h2>
+  <p>
+    右下角有只鲸鱼娘。它会自己散步、犯困、眨眼。
+    <strong>点它一下</strong>它会说话，<strong>按住拖</strong>可以把它搬到别处。
+  </p>
+  <p style="font-size:.9em;color:var(--gray)">
+    桌宠素材来自
+    <a href="https://github.com/chenthreegold/deepseek-whale-pet" rel="noopener">deepseek-whale-pet</a>
+    （MIT License），像素形象由 DeepSeek 自己逐像素绘制。
+  </p>
+
+  <h2>联系方式</h2>
+  <ul>
+    <li>GitHub：<a href="https://github.com/lalaoink" rel="noopener">@lalaoink</a></li>
+    <li>Bangumi：<a href="https://bgm.tv/user/765864" rel="noopener">航迹云</a></li>
+  </ul>
+
+  <p style="margin-top:24px"><a class="pushable" href="/">← 回到首页</a></p>
+</BaseLayout>

@@ -1,0 +1,311 @@
+---
+// ============================================================
+//  网页桌宠 · 鲸鱼娘
+//  素材：deepseek-whale-pet（MIT License，见 public/pet/LICENSE-*.txt）
+//  精灵图规格：单帧 144 x 176，透明背景，用 background-position 逐帧切换
+//
+//  ⚠️ 这是一个「岛屿」：它必须发到浏览器才能跑，
+//     因为"被点击/被拖动"是运行时才发生的事，构建时无从得知。
+// ============================================================
+---
+
+<!-- 整个容器默认不接收鼠标事件，只有精灵本体接收，避免挡住页面阅读 -->
+<div id="pet-root" class="pet-root" aria-hidden="true">
+  <div id="pet-bubble" class="pet-bubble"></div>
+  <div id="pet-sprite" class="pet-sprite" title="点我 / 拖我"></div>
+</div>
+
+<style>
+  .pet-root {
+    position: fixed;
+    right: 18px;
+    bottom: 18px;
+    z-index: 9999;
+    pointer-events: none; /* 容器不吃事件 */
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+  }
+
+  .pet-sprite {
+    /* 单帧尺寸，和精灵图格子严格一致 */
+    width: 144px;
+    height: 176px;
+    background-repeat: no-repeat;
+    background-position: 0 0;
+    /* ★ 像素画必须开这个，否则浏览器会做平滑插值，看起来糊成一团 */
+    image-rendering: pixelated;
+    -ms-interpolation-mode: nearest-neighbor;
+    cursor: grab;
+    pointer-events: auto; /* 只有它吃事件 */
+    touch-action: none; /* 手机上拖动不触发页面滚动 */
+    user-select: none;
+    -webkit-user-drag: none;
+    filter: drop-shadow(0 6px 10px rgba(0, 0, 0, 0.18));
+    transition: filter 0.2s ease;
+  }
+  .pet-sprite:hover { filter: drop-shadow(0 8px 14px rgba(49, 111, 211, 0.35)); }
+  .pet-sprite.dragging { cursor: grabbing; }
+  /* 朝向：walk 时按方向水平翻转 */
+  .pet-sprite.flip { transform: scaleX(-1); }
+
+  .pet-bubble {
+    max-width: 220px;
+    background: #fff;
+    color: var(--very-dark-gray, #222);
+    border: 2px solid var(--very-dark-gray, #222);
+    border-radius: 10px;
+    padding: 6px 10px;
+    font-size: 13px;
+    line-height: 1.4;
+    margin-bottom: 8px;
+    opacity: 0;
+    transform: translateY(6px) scale(0.96);
+    transition: opacity 0.2s ease, transform 0.2s ease;
+    pointer-events: none;
+    text-align: center;
+    font-family: var(--mono-basic, sans-serif);
+  }
+  .pet-bubble.show { opacity: 1; transform: translateY(0) scale(1); }
+
+  /* 小屏缩小，别挡住正文 */
+  @media (max-width: 600px) {
+    .pet-sprite { width: 96px; height: 117px; background-size: 96px 117px; }
+    .pet-root { right: 8px; bottom: 8px; }
+    .pet-bubble { max-width: 160px; font-size: 12px; }
+  }
+
+  /* 尊重系统的"减少动态效果"偏好 */
+  @media (prefers-reduced-motion: reduce) {
+    .pet-sprite { transition: none; }
+  }
+</style>
+
+<script>
+  // ============================================================
+  //  这一整块会原样发到浏览器执行（Astro 的 <script> 是运行时的例外）
+  // ============================================================
+
+  const FRAME_W = 144;
+  const FRAME_H = 176;
+
+  /** 每套动画：图集路径、帧数、每秒帧率、是否循环 */
+  const SHEETS = {
+    idle: { src: "/pet/idle.png", frames: 4, fps: 6, loop: true },
+    walk: { src: "/pet/walk.png", frames: 4, fps: 9, loop: true },
+    wave: { src: "/pet/wave.png", frames: 3, fps: 7, loop: false },
+    blink: { src: "/pet/blink.png", frames: 2, fps: 4, loop: false },
+    happy: { src: "/pet/happy.png", frames: 2, fps: 6, loop: false },
+    sleep: { src: "/pet/sleep.png", frames: 2, fps: 2, loop: true },
+  };
+
+  /** 点击时随机说的话 */
+  const QUOTES = [
+    "我是鲸鱼娘，住在言与叶之庭里～",
+    "今天也要写点东西吗？",
+    "嗯……这段代码我看懂了！",
+    "别熬夜，鲸鱼也要睡觉的。",
+    "要不要去「文章」看看？",
+    "拖我可以换位置哦。",
+    "叶子落下来的时候，字就长出来了。",
+    "写不出来就先散个步吧。",
+  ];
+
+  const root = document.getElementById("pet-root");
+  const sprite = document.getElementById("pet-sprite");
+  const bubble = document.getElementById("pet-bubble");
+  if (!root || !sprite || !bubble) throw new Error("pet elements missing");
+
+  // ---------- 预加载所有图集，避免切换动画时闪一下 ----------
+  for (const key of Object.keys(SHEETS)) {
+    const img = new Image();
+    img.src = SHEETS[key].src;
+  }
+
+  // ---------- 状态机 ----------
+  let state = "idle";
+  let frame = 0;
+  let acc = 0;
+  let last = performance.now();
+  let facing = 1; // 1 = 朝右, -1 = 朝左
+  let busyUntil = 0; // 非循环动画播完之前，不允许被打断
+  let idleSince = performance.now();
+  let dragging = false;
+
+  function setState(next) {
+    if (state === next) return;
+    state = next;
+    frame = 0;
+    acc = 0;
+    sprite.style.backgroundImage = `url(${SHEETS[next].src})`;
+    // 朝向只对走路有意义
+    sprite.classList.toggle("flip", next === "walk" && facing < 0);
+  }
+
+  function say(text) {
+    bubble.textContent = text;
+    bubble.classList.add("show");
+    window.clearTimeout(say._t);
+    say._t = window.setTimeout(() => bubble.classList.remove("show"), 2600);
+  }
+
+  /** 播放一次非循环动画，期间锁定状态 */
+  function playOnce(name, ms) {
+    setState(name);
+    busyUntil = performance.now() + ms;
+  }
+
+  // ---------- 主循环 ----------
+  function tick(now) {
+    const dt = now - last;
+    last = now;
+
+    // 非循环动画播完后回到 idle
+    if (busyUntil && now > busyUntil) {
+      busyUntil = 0;
+      setState("idle");
+      idleSince = now;
+    }
+
+    const sheet = SHEETS[state];
+    acc += dt;
+    const frameMs = 1000 / sheet.fps;
+    while (acc >= frameMs) {
+      acc -= frameMs;
+      frame++;
+      if (frame >= sheet.frames) {
+        if (sheet.loop) {
+          frame = 0;
+        } else {
+          frame = sheet.frames - 1;
+        }
+      }
+    }
+    sprite.style.backgroundPosition = `${-frame * FRAME_W}px 0`;
+
+    // 挂机一段时间后自己睡觉（拖动中、忙时不睡）
+    if (!dragging && !busyUntil && state === "idle" && now - idleSince > 25000) {
+      setState("sleep");
+    }
+
+    // 偶尔眨个眼，让它看起来是活的
+    if (state === "idle" && !busyUntil && Math.random() < 0.0016) {
+      playOnce("blink", 500);
+    }
+
+    requestAnimationFrame(tick);
+  }
+  setState("idle");
+  requestAnimationFrame(tick);
+
+  // ---------- 互动 1：随机散步 ----------
+  function wander() {
+    if (dragging || busyUntil || state === "sleep") {
+      window.setTimeout(wander, 4000);
+      return;
+    }
+    const dir = Math.random() < 0.5 ? -1 : 1;
+    facing = dir;
+    setState("walk");
+
+    const startX = root.offsetLeft;
+    const startY = root.offsetTop;
+    // 用 fixed 定位时 offsetLeft/Top 是相对包含块的当前值，这里记录初始值
+    const baseLeft = parseFloat(getComputedStyle(root).left);
+    const baseTop = parseFloat(getComputedStyle(root).top);
+    const fromX = isNaN(baseLeft) ? window.innerWidth - 180 : baseLeft;
+    const fromY = isNaN(baseTop) ? window.innerHeight - 220 : baseTop;
+
+    const dist = 40 + Math.random() * 120;
+    const toX = Math.min(
+      Math.max(fromX + dir * dist, 8),
+      window.innerWidth - FRAME_W - 8
+    );
+
+    const duration = 900 + Math.random() * 700;
+    const t0 = performance.now();
+
+    function step(now) {
+      const p = Math.min((now - t0) / duration, 1);
+      const ease = p < 0.5 ? 2 * p * p : 1 - Math.pow(-2 * p + 2, 2) / 2;
+      const x = fromX + (toX - fromX) * ease;
+      root.style.left = `${x}px`;
+      root.style.top = `${fromY}px`;
+      root.style.right = "auto";
+      root.style.bottom = "auto";
+      if (p < 1) requestAnimationFrame(step);
+      else {
+        setState("idle");
+        idleSince = performance.now();
+        window.setTimeout(wander, 3000 + Math.random() * 6000);
+      }
+    }
+    requestAnimationFrame(step);
+  }
+  window.setTimeout(wander, 6000);
+
+  // ---------- 互动 2：点击摸摸头 ----------
+  sprite.addEventListener("click", () => {
+    if (dragging) return;
+    playOnce(Math.random() < 0.5 ? "wave" : "happy", 900);
+    say(QUOTES[Math.floor(Math.random() * QUOTES.length)]);
+    idleSince = performance.now();
+  });
+
+  // ---------- 互动 3：拖拽 ----------
+  let dragOffsetX = 0;
+  let dragOffsetY = 0;
+  let movedDistance = 0;
+
+  sprite.addEventListener("pointerdown", (e) => {
+    dragging = true;
+    movedDistance = 0;
+    const r = root.getBoundingClientRect();
+    dragOffsetX = e.clientX - r.left;
+    dragOffsetY = e.clientY - r.top;
+    root.style.left = `${r.left}px`;
+    root.style.top = `${r.top}px`;
+    root.style.right = "auto";
+    root.style.bottom = "auto";
+    sprite.classList.add("dragging");
+    sprite.setPointerCapture(e.pointerId);
+    setState("walk");
+    idleSince = performance.now();
+  });
+
+  sprite.addEventListener("pointermove", (e) => {
+    if (!dragging) return;
+    movedDistance += Math.abs(e.movementX || 0) + Math.abs(e.movementY || 0);
+    facing = (e.movementX || 0) < 0 ? -1 : 1;
+    sprite.classList.toggle("flip", facing < 0);
+
+    const x = Math.min(
+      Math.max(e.clientX - dragOffsetX, 0),
+      window.innerWidth - FRAME_W
+    );
+    const y = Math.min(
+      Math.max(e.clientY - dragOffsetY, 0),
+      window.innerHeight - FRAME_H
+    );
+    root.style.left = `${x}px`;
+    root.style.top = `${y}px`;
+  });
+
+  function endDrag(e) {
+    if (!dragging) return;
+    dragging = false;
+    sprite.classList.remove("dragging");
+    try {
+      sprite.releasePointerCapture(e.pointerId);
+    } catch {}
+    setState("idle");
+    idleSince = performance.now();
+    // 拖完说句话（避免和 click 重复：位移很小才算点击）
+    if (movedDistance > 12) {
+      say("这里视野不错～");
+    }
+    window.setTimeout(wander, 4000);
+  }
+  sprite.addEventListener("pointerup", endDrag);
+  sprite.addEventListener("pointercancel", endDrag);
+</script>
