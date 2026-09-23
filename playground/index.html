@@ -11,6 +11,7 @@
   ============================================================
 -->
 <html lang="zh-CN">
+
 <head>
   <!--
     meta charset 必须放在最前面。
@@ -24,7 +25,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
 
   <!-- 显示在浏览器标签页上的文字 -->
-  <title>我的第一个页面</title>
+  <title>言与叶之庭</title>
 
   <!--
     <style> 里是 CSS（负责"长什么样"）。
@@ -45,9 +46,11 @@
       line-height: 1.6;
       color: #444;
     }
+
     h1 {
       color: #222;
     }
+
     /* 用 # 选中 id。这里选中 id="btn" 的那个按钮 */
     #btn {
       font-size: 16px;
@@ -57,6 +60,7 @@
       background: #fff;
       cursor: pointer;
     }
+
     /* :hover 是"鼠标悬停时"的伪类 */
     #btn:hover {
       background: #222;
@@ -77,12 +81,12 @@
 
   <!-- <ul> = unordered list（无序列表），里面每项是一个 <li> -->
   <ul>
-    <li>C++ 笔记</li>
+    <li>js 笔记</li>
     <li>前端学习记录</li>
-    <li>番剧杂谈</li>
+    <li>bangumi怎么把我墙了</li>
   </ul>
 
-  <button id="btn">点我一下</button>
+  <button id="btn">OBJECTION!</button>
 
   <!--
     <script> 里是 JavaScript（负责"做什么"）。
@@ -109,10 +113,11 @@
     btn.addEventListener('click', () => {
       count = count + 1;
       // textContent = 改这个标签里的文字
-      title.textContent = `你点了 ${count} 次`;
+      title.textContent = `偶吼吼吼，你点了 ${count} 次`;
     });
   </script>
 </body>
+
 </html>
 
 <!--
