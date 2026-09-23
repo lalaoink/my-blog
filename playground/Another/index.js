@@ -4,4 +4,5 @@ console.log('Hello World');
 const n = true;
 console.log(typeof n);
 const nm = "Adele";
-const age = 
+const age = 17;
+console.log("My name is $")

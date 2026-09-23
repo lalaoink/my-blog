@@ -142,7 +142,7 @@ const SITE = process.env.SITE_URL ?? "https://你拿到的域名.netlify.app";
 - [ ] 首页显示站名、简介、最近文章列表
 - [ ] 导航条的 5 个入口都能点通
 - [ ] 点进一篇文章，目录、代码高亮正常
-- [ ] 右下角鲸鱼娘在动；点它会说话；按住能拖
+- [ ] 右下角艾雅法拉在动；点她会说话；按住能拖；放着不管会坐下、睡觉
 - [ ] 访问一个不存在的地址（如 `/asdfgh`），看到 404 页面
 - [ ] `/rss.xml` 能打开，里面是 XML
 - [ ] `/sitemap-index.xml` 能打开
@@ -189,7 +189,8 @@ git add -A; git commit -m "更新追番"; git push
 | 框架 | Astro v7，纯静态输出 |
 | 文章 | `src/content/blog/*.md`，frontmatter 由 `src/content.config.ts` 校验 |
 | 样式 | `src/styles/global.css`，设计令牌照搬参考站 |
-| 桌宠 | `src/components/DesktopPet.astro`，精灵图在 `public/pet/`（MIT） |
+| 桌宠 | `src/components/DesktopPet.astro`，Spine 模型在 `public/pet-eyja/` |
+| 一言 | `src/components/Hitokoto.astro`，客户端调 `v1.hitokoto.cn` |
 | 追番 | `scripts/fetch-bangumi.mjs` → `src/data/bangumi.json` |
 | 构建 | `npm run build` → `dist/` |
 | 自检 | `npm run check`（构建后跑，检查站内死链） |

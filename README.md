@@ -17,7 +17,9 @@
 | 首页 / 文章列表 / 文章详情 / 关于 / 追番 | ✅ 5 类页面全部可用（`astro build` 出 7 个 HTML） |
 | 文章系统（Markdown + frontmatter 校验） | ✅ 完成，含 3 篇起始文章 |
 | 文章详情页 | ✅ 含目录、上下篇导航、Shiki 代码高亮 |
-| 鲸鱼娘桌宠 | ✅ 6 组动画、点击互动、拖拽、随机散步、自动睡觉 |
+| 艾雅法拉桌宠（Spine 骨骼动画） | ✅ 6 组动画、点击互动、拖拽、随机散步、挂机会坐下/睡觉 |
+| 通栏导航栏 | ✅ 渐变铺满视口宽度，链接与正文对齐 |
+| 一言模块 | ✅ 首页标题下方，客户端实时拉取，点击换句 |
 | Bangumi 追番 | ✅ 抓取脚本 + Actions 定时更新已验证；⚠️ 你的账号目前收藏为空，页面显示空状态 |
 | 部署配置 | ✅ `netlify.toml` 就绪 |
 | **GitHub 远端 + 实际上线** | ⏳ **待做**（需要你的 SSH 公钥） |
@@ -56,7 +58,7 @@ my-blog/
 │   └── Another/               ← 你自己写的练习
 ├── public/
 │   ├── favicon.svg
-│   └── pet/                   鲸鱼娘精灵图（MIT，来自 deepseek-whale-pet）
+│   └── pet-eyja/              艾雅法拉 Spine 模型 + 运行时（含 NOTICE.txt）
 ├── scripts/
 │   └── fetch-bangumi.mjs      Bangumi 抓取（自动翻页，limit 上限 50）
 └── src/
@@ -100,8 +102,10 @@ tags: ["标签"]
 | **按住拖动** | 跟着鼠标走，松手后留在原地 |
 | 放着一会儿 | 会自己左右散步 |
 
-素材来自 [deepseek-whale-pet](https://github.com/chenthreegold/deepseek-whale-pet)（MIT License），
-像素形象由 DeepSeek 自己逐像素绘制。许可证见 `public/pet/`。
+模型来自 [isHarryh/Ark-Models](https://github.com/isHarryh/Ark-Models)，
+运行时用 [Spine Runtimes](https://github.com/EsotericSoftware/spine-runtimes) 3.8。
+**角色版权归鹰角网络所有，这是一份未获官方授权的同人使用，仅供个人学习。**
+完整说明见 `public/pet-eyja/NOTICE.txt`。
 
 ---
 
