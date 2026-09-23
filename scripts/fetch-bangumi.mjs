@@ -23,6 +23,12 @@ import { dirname } from "node:path";
 const USERNAME = process.env.BANGUMI_USERNAME ?? "765864";
 const OUT_FILE = "src/data/bangumi.json";
 
+// 可选：访问令牌。收藏设为「私密」时，未认证请求会返回 0 条，
+// 必须带上 token 才能读到。token 从环境变量读，绝不写进代码或仓库。
+//   PowerShell: $env:BANGUMI_TOKEN="..."
+//   GitHub Actions: 存在仓库 Secrets 里的 BANGUMI_TOKEN
+const TOKEN = (process.env.BANGUMI_TOKEN ?? "").trim();
+
 // Bangumi 要求带一个能识别来源的 User-Agent，否则可能被拒
 const UA = "lalaoink-blog/0.1 (https://github.com/lalaoink)";
 
@@ -52,9 +58,11 @@ async function fetchJson(url, { retries = 3 } = {}) {
   let lastErr;
   for (let attempt = 1; attempt <= retries; attempt++) {
     try {
-      const res = await fetch(url, {
-        headers: { "User-Agent": UA, Accept: "application/json" },
-      });
+      const headers = { "User-Agent": UA, Accept: "application/json" };
+      // 有 token 就带上 —— 否则私密收藏会返回 0 条
+      if (TOKEN) headers.Authorization = `Bearer ${TOKEN}`;
+
+      const res = await fetch(url, { headers });
       if (res.status === 404) {
         throw new Error(`用户不存在或接口 404：${url}`);
       }
@@ -135,7 +143,10 @@ function normalize(raw) {
 
 // ---------- 主流程 ----------
 async function main() {
-  console.log(`→ 抓取 Bangumi 用户 ${USERNAME} 的动画收藏…`);
+  console.log(
+    `→ 抓取 Bangumi 用户 ${USERNAME} 的动画收藏…` +
+      (TOKEN ? "（已带访问令牌）" : "（⚠️ 无令牌，只能读公开收藏）")
+  );
 
   const byType = {};
   const all = [];
