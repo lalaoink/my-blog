@@ -1,95 +1,84 @@
 ---
 // ============================================================
-//  网页桌宠 · 鲸鱼娘
-//  素材：deepseek-whale-pet（MIT License，见 public/pet/LICENSE-*.txt）
-//  精灵图规格：单帧 144 x 176，透明背景，用 background-position 逐帧切换
+//  网页桌宠 · 艾雅法拉（明日方舟）
 //
-//  ⚠️ 这是一个「岛屿」：它必须发到浏览器才能跑，
-//     因为"被点击/被拖动"是运行时才发生的事，构建时无从得知。
+//  模型：Arknights 基建小人（Spine 3.8 骨骼动画）
+//    来源 https://github.com/isHarryh/Ark-Models  （models/180_amgoat）
+//    运行时 https://github.com/EsotericSoftware/spine-runtimes （tag 3.8）
+//    ⚠️ 版权与许可说明见 public/pet-eyja/NOTICE.txt
 //
-//  ⚠️ 注意：本文件注释里不要写出 script 标签的字面量 ——
-//     Vite 的依赖扫描器会把它误认成真的脚本块起点，导致 dev 报 PARSE_ERROR。
+//  动画（6 组，由实测枚举得到）：
+//    Default  待机      Interact 互动 1.2s   Move  行走 3.0s
+//    Relax    放松 2.0s  Sit      坐下 3.33s  Sleep 睡觉 3.33s
+//
+//  ⚠️ 重要：spine-core.js / spine-canvas.js 是 UMD 全局脚本，不是 ES 模块，
+//     所以必须用 is:inline 保留成普通 script 标签，否则 Vite 会尝试打包并报错。
 // ============================================================
 ---
 
-<!--
-  结构说明：
-    .pet-root   固定定位的容器，不吃鼠标事件（避免挡住页面阅读）
-    .pet-scale  只负责缩放（小屏时整体变小，不改变精灵图的取帧数学）
-    .pet-sprite 只负责翻转与动画（background-position 逐帧切换）
-  把"缩放"和"翻转"拆到两层，是为了避免两个 transform 互相覆盖。
--->
 <div id="pet-root" class="pet-root">
   <div id="pet-bubble" class="pet-bubble" role="status" aria-live="polite"></div>
   <div class="pet-scale">
-    <!--
-      注意：这里不能用 aria-hidden="true"。
-      aria-hidden 的元素不应该可聚焦，而下面这个既要能 Tab 聚焦、
-      又要能被读屏软件念出来，两者冲突会造成无障碍违规。
-      正确做法是用 role + aria-label 描述它是干什么的。
-    -->
-    <div
-      id="pet-sprite"
-      class="pet-sprite"
+    <canvas
+      id="pet-canvas"
+      class="pet-canvas"
       role="button"
       tabindex="0"
-      aria-label="鲸鱼娘桌宠：点击或按回车和它说话，也可以按住拖动"
+      aria-label="艾雅法拉桌宠：点击或按回车和她说话，也可以按住拖动"
       title="点我 / 拖我"
-    ></div>
+    ></canvas>
   </div>
 </div>
+
+<!-- 运行时：普通脚本，先于下面的模块脚本执行 -->
+<script is:inline src="/pet-eyja/spine-core.js"></script>
+<script is:inline src="/pet-eyja/spine-canvas.js"></script>
 
 <style>
   .pet-root {
     position: fixed;
-    /* ★ 静止位置交给 CSS（right/bottom）。
-       不要用 JS 算初始 left/top —— 脚本执行那一刻拿到的 innerWidth
-       未必等于最终视口宽度（无头浏览器、页面缩放、首屏未稳定都会偏差），
-       位置会歪掉。只有真的要移动时才切换成 left/top。 */
+    /* 静止位置交给 CSS；只在真正移动时才切换成 left/top */
     right: 18px;
-    bottom: 18px;
+    bottom: 12px;
     z-index: 9999;
-    pointer-events: none; /* 容器不吃事件 */
+    pointer-events: none;
     will-change: left, top;
   }
 
   .pet-scale {
-    /* 只在需要时缩放；默认 1 */
     transform: scale(var(--pet-scale, 1));
-    transform-origin: top left;
+    transform-origin: bottom right;
   }
 
-  .pet-sprite {
-    /* ★ 单帧尺寸，必须与精灵图格子严格一致。
-       动画是靠 background-position 平移实现的，
-       所以这个尺寸不能随便改 —— 要整体变大变小请改 --pet-scale。 */
-    width: 144px;
-    height: 176px;
-    background-repeat: no-repeat;
-    background-position: 0 0;
-    /* ★ 像素画必须开这个，否则浏览器会做平滑插值，糊成一团 */
-    image-rendering: pixelated;
-    -ms-interpolation-mode: nearest-neighbor;
+  .pet-canvas {
+    /* 显示尺寸；内部像素尺寸由 JS 按 devicePixelRatio 设置，保证清晰 */
+    width: 118px;
+    height: 173px;
+    display: block;
     cursor: grab;
-    pointer-events: auto; /* 只有它吃事件 */
-    touch-action: none; /* 手机上拖动不触发页面滚动 */
+    pointer-events: auto;
+    touch-action: none;
     user-select: none;
     -webkit-user-drag: none;
-    filter: drop-shadow(0 6px 10px rgba(0, 0, 0, 0.18));
-    transition: filter 0.2s ease;
+    filter: drop-shadow(0 6px 12px rgba(0, 0, 0, 0.22));
+    transition: filter 0.2s ease, opacity 0.2s ease;
   }
-  .pet-sprite:hover { filter: drop-shadow(0 8px 14px rgba(49, 111, 211, 0.35)); }
-  .pet-sprite.dragging { cursor: grabbing; }
-
-  /* 朝向：走路时按方向水平翻转 */
-  .pet-sprite.flip { transform: scaleX(-1); }
+  .pet-canvas:hover {
+    filter: drop-shadow(0 8px 16px rgba(49, 111, 211, 0.4));
+  }
+  .pet-canvas.dragging { cursor: grabbing; }
+  .pet-canvas:focus-visible {
+    outline: 2px solid var(--sea-blue, #316fd3);
+    outline-offset: 4px;
+    border-radius: 6px;
+  }
 
   .pet-bubble {
     position: absolute;
     bottom: 100%;
     left: 50%;
     transform: translate(-50%, 6px) scale(0.96);
-    margin-bottom: 8px;
+    margin-bottom: 6px;
     width: max-content;
     max-width: 220px;
     background: #fff;
@@ -107,136 +96,156 @@
   }
   .pet-bubble.show { opacity: 1; transform: translate(-50%, 0) scale(1); }
 
-  /* 小屏：只缩放，不动尺寸数学 */
+  /* 小屏缩放 */
   @media (max-width: 600px) {
-    .pet-root { --pet-scale: 0.62; }
+    .pet-root { --pet-scale: 0.6; }
     .pet-bubble { max-width: 150px; font-size: 12px; }
   }
-
-  /* 中等宽度时正文栏和桌宠会重叠，略降不透明度保证还能读清字。
-     悬停时恢复不透明。宽屏（>1000px）下正文栏居中、桌宠靠右，不会重叠。 */
+  /* 中等宽度时略降不透明度，避免压住正文 */
   @media (max-width: 1000px) {
-    .pet-sprite { opacity: 0.85; }
-    .pet-sprite:hover,
-    .pet-sprite.dragging { opacity: 1; }
+    .pet-canvas { opacity: 0.88; }
+    .pet-canvas:hover,
+    .pet-canvas.dragging { opacity: 1; }
   }
 
-  /* 尊重系统的"减少动态效果"偏好 */
   @media (prefers-reduced-motion: reduce) {
-    .pet-sprite { transition: none; }
+    .pet-canvas { transition: none; }
   }
 </style>
 
 <script>
   // ============================================================
-  //  这一整块会原样发到浏览器执行（Astro 的 script 标签是运行时的例外）
+  //  这一段会发到浏览器执行。它等全局 spine 就绪后再初始化。
   // ============================================================
 
-  const FRAME_W = 144;
-  const FRAME_H = 176;
+  // 模型原始尺寸（由实测得到：SkeletonData 262 x 385，原点在脚底）
+  const MODEL_W = 262;
+  const MODEL_H = 385;
+  // 画布高度多留 5px：模型底边在 y=-4，翻转后会稍微超出 385
+  const CANVAS_H = 390;
 
-  /** 每套动画：图集路径、帧数、每秒帧率、是否循环 */
-  const SHEETS = {
-    idle: { src: "/pet/idle.png", frames: 4, fps: 6, loop: true },
-    walk: { src: "/pet/walk.png", frames: 4, fps: 9, loop: true },
-    wave: { src: "/pet/wave.png", frames: 3, fps: 7, loop: false },
-    blink: { src: "/pet/blink.png", frames: 2, fps: 4, loop: false },
-    happy: { src: "/pet/happy.png", frames: 2, fps: 6, loop: false },
-    sleep: { src: "/pet/sleep.png", frames: 2, fps: 2, loop: true },
+  /** 我的状态 → Spine 动画名 */
+  const ANIM = {
+    idle: "Default",
+    walk: "Move",
+    sit: "Sit",
+    sleep: "Sleep",
+    relax: "Relax",
   };
 
-  /** 点击时随机说的话 */
   const QUOTES = [
-    "我是鲸鱼娘，住在言与叶之庭里～",
-    "今天也要写点东西吗？",
+    "我是艾雅法拉，火山学家。",
+    "博士，今天也来写点什么吗？",
     "嗯……这段代码我看懂了！",
-    "别熬夜，鲸鱼也要睡觉的。",
+    "别熬夜，源石虫也要休息的。",
     "要不要去「文章」看看？",
     "拖我可以换位置哦。",
-    "叶子落下来的时候，字就长出来了。",
+    "这一带的地质构造很有意思。",
     "写不出来就先散个步吧。",
+    "我的听力不太好……你说大声点？",
   ];
 
   const root = document.getElementById("pet-root");
-  const sprite = document.getElementById("pet-sprite");
+  const canvas = document.getElementById("pet-canvas");
   const bubble = document.getElementById("pet-bubble");
-  if (!root || !sprite || !bubble) throw new Error("pet elements missing");
+  if (!root || !canvas || !bubble) throw new Error("pet elements missing");
 
-  // ---------- 预加载所有图集，避免切换动画时闪一下 ----------
-  for (const key of Object.keys(SHEETS)) {
-    const img = new Image();
-    img.src = SHEETS[key].src;
-  }
+  // 调试/自检探针：把初始化进度写在 DOM 属性上，便于无头浏览器排查
+  const status = (s) => root.setAttribute("data-status", s);
+  status("start");
 
   // ---------- 位置状态 ----------
-  // 初始位置由 CSS 的 right/bottom 决定，这里只在需要移动时才接管。
   let posX = 0;
   let posY = 0;
-  let positioned = false; // 是否已经把 right/bottom 换成 left/top
+  let positioned = false;
 
-  /** 当前整体缩放比例（小屏时会小于 1） */
   function currentScale() {
     const v = getComputedStyle(root).getPropertyValue("--pet-scale").trim();
     const n = parseFloat(v);
     return Number.isFinite(n) && n > 0 ? n : 1;
   }
-
-  /** 按当前缩放算出的实际占位宽高 */
   function petSize() {
     const s = currentScale();
-    return { w: FRAME_W * s, h: FRAME_H * s };
+    const r = canvas.getBoundingClientRect();
+    // 用实际渲染尺寸更可靠（CSS 尺寸 × 缩放）
+    return { w: r.width || 118 * s, h: r.height || 173 * s };
   }
-
   function clampPosition() {
     const { w, h } = petSize();
     posX = Math.min(Math.max(posX, 0), Math.max(0, window.innerWidth - w));
     posY = Math.min(Math.max(posY, 0), Math.max(0, window.innerHeight - h));
   }
-
   function applyPosition() {
     root.style.left = `${posX}px`;
     root.style.top = `${posY}px`;
   }
-
-  /** 把"CSS 定位"切换成"JS 坐标定位"，切换时以当前实际位置为准 */
   function ensurePositioned() {
     if (positioned) return;
     const r = root.getBoundingClientRect();
-    posX = r.left;
-    posY = r.top;
+    // ⚠️ 必须夹取范围：getBoundingClientRect 在读到的瞬间可能还没反映
+    //    CSS 的 right/bottom 定位（样式表刚注入、布局尚未稳定等），
+    //    直接拿 r.left/r.top 会让桌宠飞到屏幕外。
+    const w = r.width || canvas.getBoundingClientRect().width || 118;
+    const h = r.height || canvas.getBoundingClientRect().height || 173;
+    posX = Math.min(Math.max(r.left, 0), Math.max(0, window.innerWidth - w));
+    posY = Math.min(Math.max(r.top, 0), Math.max(0, window.innerHeight - h));
     root.style.right = "auto";
     root.style.bottom = "auto";
     applyPosition();
     positioned = true;
   }
-
   window.addEventListener("resize", () => {
-    if (!positioned) return; // 还靠 CSS 定位时，浏览器自己会处理
+    if (!positioned) return;
     clampPosition();
     applyPosition();
   });
 
-  // ---------- 状态机 ----------
-  // ⚠️ 初值必须是空字符串，不能是 "idle"。
-  //    因为 setState() 开头有 `if (state === next) return` 的早退，
-  //    如果初值就是 "idle"，下面首次 setState("idle") 会被直接拦掉，
-  //    background-image 永远不会被设置 —— 桌宠会是全透明的。
-  let state = "";
-  let frame = 0;
-  let acc = 0;
-  let last = performance.now();
-  let facing = 1; // 1 = 朝右, -1 = 朝左
-  let busyUntil = 0; // 非循环动画播完之前不允许被打断
-  let idleSince = performance.now();
-  let dragging = false;
+  // ---------- 加载运行时（等待 is:inline 的 script 执行完） ----------
+  function waitForSpine(timeoutMs = 8000) {
+    return new Promise((resolve, reject) => {
+      const t0 = performance.now();
+      (function poll() {
+        if (window.spine && window.spine.canvas && window.spine.SkeletonBinary) {
+          resolve(window.spine);
+        } else if (performance.now() - t0 > timeoutMs) {
+          reject(new Error("spine runtime not available"));
+        } else {
+          requestAnimationFrame(poll);
+        }
+      })();
+    });
+  }
 
-  function setState(next) {
-    if (state === next) return;
-    state = next;
-    frame = 0;
-    acc = 0;
-    sprite.style.backgroundImage = `url(${SHEETS[next].src})`;
-    sprite.classList.toggle("flip", next === "walk" && facing < 0);
+  // ---------- 初始化 ----------
+  let skeleton = null;
+  let animState = null;
+  let renderer = null;
+  let ready = false;
+
+  function setupCanvas(dpr) {
+    canvas.width = MODEL_W * dpr;
+    canvas.height = CANVAS_H * dpr;
+    canvas.style.width = "118px";
+    canvas.style.height = "173px";
+  }
+
+  function setState(name) {
+    if (!ready) return;
+    if (state === name) return;
+    state = name;
+    const anim = ANIM[name];
+    if (!anim) return;
+
+    if (name === "relax") {
+      // 一次性互动动画，播完自动回到待机
+      animState.setAnimation(0, "Interact", false);
+      animState.addAnimation(0, ANIM.idle, true, 0);
+      busyUntil = performance.now() + 1200;
+    } else {
+      // idle / walk / sit / sleep 都是循环状态，靠交互或超时切换
+      animState.setAnimation(0, anim, true);
+      busyUntil = 0;
+    }
   }
 
   function say(text) {
@@ -246,68 +255,60 @@
     say._t = setTimeout(() => bubble.classList.remove("show"), 2600);
   }
 
-  /** 播放一次非循环动画，期间锁定状态 */
-  function playOnce(name, ms) {
-    setState(name);
-    busyUntil = performance.now() + ms;
-  }
-
-  // ---------- 主循环 ----------
-  function tick(now) {
-    // ★ 夹住 dt：标签页切到后台再切回来时，now-last 可能是几十秒，
-    //   不夹住的话下面的 while 循环会空转成千上万次。
-    const dt = Math.min(now - last, 100);
-    last = now;
-
-    // 非循环动画播完后回到 idle
-    if (busyUntil && now > busyUntil) {
-      busyUntil = 0;
-      setState("idle");
-      idleSince = now;
-    }
-
-    const sheet = SHEETS[state];
-    acc += dt;
-    const frameMs = 1000 / sheet.fps;
-    let guard = 0;
-    while (acc >= frameMs && guard++ < 8) {
-      acc -= frameMs;
-      frame++;
-      if (frame >= sheet.frames) frame = sheet.loop ? 0 : sheet.frames - 1;
-    }
-    sprite.style.backgroundPosition = `${-frame * FRAME_W}px 0`;
-
-    // 挂机久了就睡（拖动中、播动画时不睡）
-    if (!dragging && !busyUntil && state === "idle" && now - idleSince > 25000) {
-      setState("sleep");
-    }
-
-    // 偶尔眨眼，让它看起来是活的（约每 10 秒一次）
-    if (state === "idle" && !busyUntil && Math.random() < 0.0016) {
-      playOnce("blink", 500);
-    }
-
-    requestAnimationFrame(tick);
-  }
-  setState("idle");
-  requestAnimationFrame(tick);
-
-  // ---------- 互动 1：随机散步 ----------
+  // ---------- 状态变量 ----------
+  let state = "";
+  let busyUntil = 0;
+  let idleSince = performance.now();
+  let facing = 1;
+  let dragging = false;
+  let last = performance.now();
   let wanderTimer = null;
+  let drawCount = 0;
 
   function scheduleWander(delay) {
     clearTimeout(wanderTimer);
     wanderTimer = setTimeout(wander, delay);
   }
 
+  // ---------- 主循环 ----------
+  function tick(now) {
+    const dt = Math.min((now - last) / 1000, 0.1); // 秒，夹住防止切后台后跳变
+    last = now;
+
+    if (ready) {
+      if (busyUntil && now > busyUntil) {
+        busyUntil = 0;
+        setState("idle");
+        idleSince = now;
+      }
+
+      // 挂机越久越懒：待机 → 坐下 → 睡觉（都是循环状态，交互才会打断）
+      if (!dragging && !busyUntil) {
+        const idleFor = now - idleSince;
+        if (state === "idle" && idleFor > 30000) setState("sit");
+        else if (state === "sit" && idleFor > 75000) setState("sleep");
+      }
+
+      animState.update(dt);
+      animState.apply(skeleton);
+      skeleton.updateWorldTransform();
+      renderer.draw(skeleton);
+
+      // 探针：确认真的在绘制
+      drawCount++;
+      if (drawCount % 30 === 0) {
+        status("drawing#" + drawCount + ",state=" + state);
+      }
+    }
+    requestAnimationFrame(tick);
+  }
+
+  // ---------- 互动 1：随机散步 ----------
   function wander() {
-    // 睡着、被拖动、正在播动画时，改天再说
-    if (dragging || busyUntil || state === "sleep") {
-      scheduleWander(4000);
+    if (!ready || dragging || busyUntil || state === "sleep" || state === "sit") {
+      scheduleWander(5000);
       return;
     }
-
-    // 要动了，先把定位方式从 CSS 切成 JS 坐标
     ensurePositioned();
 
     const dir = Math.random() < 0.5 ? -1 : 1;
@@ -317,36 +318,33 @@
     const { w } = petSize();
     const fromX = posX;
     const targetX = Math.min(
-      Math.max(posX + dir * (40 + Math.random() * 120), 0),
+      Math.max(posX + dir * (40 + Math.random() * 130), 0),
       Math.max(0, window.innerWidth - w)
     );
-
-    const duration = 900 + Math.random() * 700;
+    const duration = 1200 + Math.random() * 900;
     const t0 = performance.now();
 
     function step(now) {
       const p = Math.min((now - t0) / duration, 1);
-      // easeInOutQuad，起步和收尾都平缓一点
       const ease = p < 0.5 ? 2 * p * p : 1 - Math.pow(-2 * p + 2, 2) / 2;
       posX = fromX + (targetX - fromX) * ease;
       applyPosition();
-      if (p < 1) {
-        requestAnimationFrame(step);
-      } else {
+      if (p < 1) requestAnimationFrame(step);
+      else {
         setState("idle");
         idleSince = performance.now();
-        scheduleWander(3000 + Math.random() * 6000);
+        scheduleWander(4000 + Math.random() * 6000);
       }
     }
     requestAnimationFrame(step);
   }
 
-  scheduleWander(6000);
-
-  // ---------- 互动 2：点击摸摸头 ----------
-  sprite.addEventListener("click", () => {
-    if (movedDistance > 12) return; // 那是拖动，不是点击
-    playOnce(Math.random() < 0.5 ? "wave" : "happy", 900);
+  // ---------- 互动 2：点击互动 ----------
+  let movedDistance = 0;
+  canvas.addEventListener("click", () => {
+    if (movedDistance > 12) return; // 那是拖动，不算点击
+    if (!ready) return;
+    setState("relax");
     say(QUOTES[Math.floor(Math.random() * QUOTES.length)]);
     idleSince = performance.now();
   });
@@ -354,34 +352,25 @@
   // ---------- 互动 3：拖拽 ----------
   let dragOffsetX = 0;
   let dragOffsetY = 0;
-  let movedDistance = 0;
 
-  sprite.addEventListener("pointerdown", (e) => {
+  canvas.addEventListener("pointerdown", (e) => {
+    if (!ready) return;
     dragging = true;
     movedDistance = 0;
-    // 开始拖之前先锁定当前位置（从 CSS 定位切到 JS 坐标）
     ensurePositioned();
     const r = root.getBoundingClientRect();
     dragOffsetX = e.clientX - r.left;
     dragOffsetY = e.clientY - r.top;
-    sprite.classList.add("dragging");
-    try {
-      sprite.setPointerCapture(e.pointerId);
-    } catch {}
+    canvas.classList.add("dragging");
+    try { canvas.setPointerCapture(e.pointerId); } catch {}
     setState("walk");
     idleSince = performance.now();
     e.preventDefault();
   });
 
-  sprite.addEventListener("pointermove", (e) => {
+  canvas.addEventListener("pointermove", (e) => {
     if (!dragging) return;
     movedDistance += Math.abs(e.movementX || 0) + Math.abs(e.movementY || 0);
-
-    if ((e.movementX || 0) !== 0) {
-      facing = e.movementX < 0 ? -1 : 1;
-      sprite.classList.toggle("flip", facing < 0);
-    }
-
     posX = e.clientX - dragOffsetX;
     posY = e.clientY - dragOffsetY;
     clampPosition();
@@ -391,27 +380,93 @@
   function endDrag(e) {
     if (!dragging) return;
     dragging = false;
-    sprite.classList.remove("dragging");
-    try {
-      sprite.releasePointerCapture(e.pointerId);
-    } catch {}
+    canvas.classList.remove("dragging");
+    try { canvas.releasePointerCapture(e.pointerId); } catch {}
     setState("idle");
     idleSince = performance.now();
-    // 真的搬动了才说话（轻微抖动不算）
-    if (movedDistance > 12) say("这里视野不错～");
+    if (movedDistance > 12) say("这里地质不错～");
     scheduleWander(5000);
   }
-  sprite.addEventListener("pointerup", endDrag);
-  sprite.addEventListener("pointercancel", endDrag);
+  canvas.addEventListener("pointerup", endDrag);
+  canvas.addEventListener("pointercancel", endDrag);
 
-  // 键盘可达性：Tab 能聚焦，回车/空格等于点一下
-  // （tabindex 与 role 写在模板里，这里只补键盘行为）
-  sprite.addEventListener("keydown", (e) => {
+  // 键盘可达性
+  canvas.addEventListener("keydown", (e) => {
     if (e.key === "Enter" || e.key === " ") {
       e.preventDefault();
-      playOnce("wave", 900);
-      say(QUOTES[Math.floor(Math.random() * QUOTES.length)]);
-      idleSince = performance.now();
+      canvas.click();
     }
   });
+
+  // ---------- 启动 ----------
+  (async function boot() {
+    try {
+      status("waiting-runtime");
+      const spine = await waitForSpine();
+      const dpr = Math.min(window.devicePixelRatio || 1, 2);
+      setupCanvas(dpr);
+      status("runtime-ok,dpr=" + dpr);
+
+      const base = "/pet-eyja/";
+      status("fetching-assets");
+      const [atlasText, skelBuf] = await Promise.all([
+        fetch(base + "build_char_180_amgoat.atlas").then((r) => r.text()),
+        fetch(base + "build_char_180_amgoat.skel").then((r) => r.arrayBuffer()),
+      ]);
+      status("assets-fetched");
+
+      const img = new Image();
+      await new Promise((res, rej) => {
+        img.onload = res;
+        img.onerror = () => rej(new Error("texture load failed"));
+        img.src = base + "build_char_180_amgoat.png";
+      });
+      status("texture-loaded");
+
+      const atlas = new spine.TextureAtlas(atlasText, () =>
+        new spine.canvas.CanvasTexture(img)
+      );
+      const data = new spine.SkeletonBinary(
+        new spine.AtlasAttachmentLoader(atlas)
+      ).readSkeletonData(new Uint8Array(skelBuf));
+
+      skeleton = new spine.Skeleton(data);
+      // 模型坐标：x ∈ [-162, 100]，y ∈ [-4, 381]，原点在脚底
+      // canvas 的 y 轴向下，所以整体上移并把纵向翻过来
+      skeleton.x = 162 * dpr;
+      skeleton.y = MODEL_H * dpr;
+      skeleton.scaleX = dpr;
+      skeleton.scaleY = -dpr;
+
+      animState = new spine.AnimationState(new spine.AnimationStateData(data));
+      // ⚠️ SkeletonRenderer 的构造函数要的是 **2D 上下文**，不是 canvas 元素。
+      //    源码：function SkeletonRenderer(context) { this.ctx = context; }
+      //    传 canvas 元素会报 "ctx.save is not a function"。
+      renderer = new spine.canvas.SkeletonRenderer(canvas.getContext("2d"));
+
+      ready = true;
+      state = "";
+      setState("idle");
+
+      // ★ 立即同步画一帧。
+      //   不能只依赖 requestAnimationFrame：标签页在后台、或被浏览器节流时，
+      //   rAF 可能长时间不触发，桌宠就会一直空着。先画一帧保证立即可见。
+      animState.update(0);
+      animState.apply(skeleton);
+      skeleton.updateWorldTransform();
+      renderer.draw(skeleton);
+      drawCount = 1;
+
+      status("ready,vp=" + window.innerWidth + "x" + window.innerHeight);
+      idleSince = performance.now();
+      scheduleWander(6000);
+    } catch (err) {
+      console.warn("[pet] 初始化失败：", err);
+      status("ERROR: " + (err && err.message ? err.message : String(err)));
+      // 失败时静默隐藏，不影响页面其他部分
+      root.style.display = "none";
+    }
+  })();
+
+  requestAnimationFrame(tick);
 </script>

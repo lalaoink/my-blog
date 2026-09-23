@@ -1,5 +1,6 @@
 ---
 import BaseLayout from "../layouts/BaseLayout.astro";
+import Hitokoto from "../components/Hitokoto.astro";
 import { getCollection } from "astro:content";
 
 // 取所有非草稿文章，按日期倒序（新的在前）
@@ -14,6 +15,9 @@ const fmt = (d: Date) =>
 
 <BaseLayout>
   <h1>言与叶之庭</h1>
+
+  <!-- 一言：标题正下方，点一下换一句 -->
+  <Hitokoto />
 
   <p><em>把散落的字拾起来，种在叶子底下。</em></p>
   <p>

@@ -1,0 +1,124 @@
+---
+// ============================================================
+//  一言（Hitokoto）模块
+//
+//  数据来自 https://hitokoto.cn 的公开 API（实测本机直连可通，无需代理）。
+//
+//  ⚠️ 这是「客户端拉取」：API 在用户浏览器里被调用，不在构建时。
+//     所以断网时会拉不到 —— 下面内置了几条兜底句子，保证不会显示空白。
+//
+//  想换成构建时缓存（离线也固定有一句），把它改成在 frontmatter 里 fetch 即可。
+// ============================================================
+---
+
+<div
+  id="hitokoto"
+  class="hitokoto"
+  role="button"
+  tabindex="0"
+  title="点一下，换一句"
+  aria-label="一言：点一下换一句"
+>
+  <p class="hitokoto-text" id="hitokoto-text">正在取一句话…</p>
+  <p class="hitokoto-from" id="hitokoto-from"></p>
+</div>
+
+<style>
+  .hitokoto {
+    margin: 0.9em 0 1.4em;
+    padding: 10px 14px;
+    border-left: 2px solid var(--gray);
+    cursor: pointer;
+    user-select: none;
+    -webkit-tap-highlight-color: transparent;
+    transition: background-color 0.18s ease, border-color 0.18s ease;
+  }
+  .hitokoto:hover,
+  .hitokoto:focus-visible {
+    background-color: #faf9f6;
+    border-left-color: var(--sea-blue);
+    outline: none;
+  }
+
+  .hitokoto-text {
+    margin: 0;
+    font-style: italic;
+    line-height: 1.6;
+    color: var(--very-dark-gray);
+    /* 换句时轻微淡入，避免生硬跳变 */
+    transition: opacity 0.18s ease;
+  }
+  .hitokoto-text.is-loading { opacity: 0.35; }
+
+  .hitokoto-from {
+    margin: 4px 0 0;
+    font-size: 0.85em;
+    color: var(--gray);
+    text-align: right;
+    font-style: italic;
+  }
+</style>
+
+<script>
+  // ============================================================
+  //  这一段发到浏览器执行
+  // ============================================================
+
+  const box = document.getElementById("hitokoto");
+  const elText = document.getElementById("hitokoto-text");
+  const elFrom = document.getElementById("hitokoto-from");
+  if (!box || !elText || !elFrom) throw new Error("hitokoto elements missing");
+
+  // API：encode=json 返回 JSON；max_length 限制长度，避免占太多版面
+  const API = "https://v1.hitokoto.cn/?encode=json&max_length=45";
+
+  // 兜底句子：网络不通或 API 挂掉时用，保证这块不会空着
+  const FALLBACK = [
+    { hitokoto: "把散落的字拾起来，种在叶子底下。", from: "", from_who: "" },
+    { hitokoto: "写不出来的时候，就先散个步。", from: "", from_who: "" },
+    { hitokoto: "叶子落下来的时候，字就长出来了。", from: "", from_who: "" },
+  ];
+
+  let loading = false;
+
+  function render(item) {
+    elText.textContent = item.hitokoto;
+    const who = item.from_who ? `${item.from_who}「${item.from}」` : item.from || "";
+    elFrom.textContent = who ? `—— ${who}` : "";
+    elText.classList.remove("is-loading");
+  }
+
+  async function load() {
+    if (loading) return;
+    loading = true;
+    elText.classList.add("is-loading");
+
+    try {
+      // 加超时：API 卡住时不要一直转
+      const ctrl = new AbortController();
+      const timer = setTimeout(() => ctrl.abort(), 6000);
+      const res = await fetch(API, { signal: ctrl.signal });
+      clearTimeout(timer);
+      if (!res.ok) throw new Error("HTTP " + res.status);
+      const data = await res.json();
+      if (!data || !data.hitokoto) throw new Error("bad payload");
+      render(data);
+    } catch (err) {
+      // 失败就用兜底句子，别让这块显示错误信息
+      console.warn("[hitokoto] 拉取失败，使用兜底句子：", err.message);
+      render(FALLBACK[Math.floor(Math.random() * FALLBACK.length)]);
+    } finally {
+      loading = false;
+    }
+  }
+
+  box.addEventListener("click", load);
+  box.addEventListener("keydown", (e) => {
+    if (e.key === "Enter" || e.key === " ") {
+      e.preventDefault();
+      load();
+    }
+  });
+
+  load();
+</script>

@@ -27,12 +27,16 @@
 
 /* ---------- 基础排版 ---------- */
 
+/* ★ 核心排版：65ch = 一行约 65 个字符宽。
+   用 ch 而不是 px，字号变化时栏宽会跟着变，始终维持阅读舒适区。
+
+   ⚠️ 这个约束放在 main / footer 上，而【不是】body 上。
+   因为导航栏要做成铺满整个视口宽度的通栏 —— 如果 body 被限制成 65ch，
+   header 就没法自然地铺满，只能靠 100vw + 负 margin 硬突破，
+   而 100vw 包含滚动条宽度，会引入横向溢出。 */
 body {
-  margin: auto;
-  padding: 20px;
-  /* ★ 核心：65ch = 一行约 65 个字符宽。
-     用 ch 而不是 px，字号变化时栏宽会跟着变，始终维持阅读舒适区。 */
-  max-width: 65ch;
+  margin: 0;
+  padding: 0;
   line-height: 1.5;
   word-wrap: break-word;
   overflow-wrap: break-word;
@@ -40,6 +44,16 @@ body {
   background-color: #fff;
   color: var(--dark-gray);
   font-family: var(--mono-basic);
+}
+
+/* 正文与页脚：保持 65ch 居中窄栏 */
+main,
+footer {
+  max-width: 65ch;
+  margin-left: auto;
+  margin-right: auto;
+  padding-left: 20px;
+  padding-right: 20px;
 }
 
 h1, h2, h3, h4, h5, h6, strong, b { color: var(--very-dark-gray); }
@@ -110,12 +124,22 @@ nav {
   /* 留出 10% 余量，这样 JS 平移背景时不会露白 */
   background-size: 110% 200%;
   color: #fff;
-  border-radius: 8px;
+  /* 通栏样式：不再需要圆角，改成一条完整的色带 */
+  border-radius: 0;
   transition: all 0.18s cubic-bezier(0.45, 0.05, 0.55, 0.95);
   /* 参考站的 nav 上挂了 shadow-lg，这里还原成等效的 box-shadow */
   box-shadow:
     0 10px 15px -3px rgb(0 0 0 / 0.1),
     0 4px 6px -4px rgb(0 0 0 / 0.1);
+}
+
+/* 导航链接与正文栏对齐 —— 色带铺满整屏，但链接仍在 65ch 内，
+   这样视觉上和下面的正文是同一根轴线 */
+#inner-nav-box {
+  max-width: 65ch;
+  margin: 0 auto;
+  padding: 10px 20px;
+  box-sizing: border-box;
 }
 
 nav a {

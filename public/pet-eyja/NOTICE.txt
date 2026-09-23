@@ -1,0 +1,62 @@
+# 素材来源与许可说明
+
+本目录下的文件用于网站右下角的桌宠（艾雅法拉）。**请在使用前阅读本说明。**
+
+---
+
+## 文件清单
+
+| 文件 | 大小 | 来源 |
+| --- | --- | --- |
+| `build_char_180_amgoat.skel` | 110 KB | 模型骨骼数据 |
+| `build_char_180_amgoat.atlas` | 8 KB | 图集描述 |
+| `build_char_180_amgoat.png` | 211 KB | 图集贴图（576×576） |
+| `spine-core.js` | 292 KB | Spine 运行时核心 |
+| `spine-canvas.js` | 303 KB | Spine 的 Canvas 渲染器 |
+
+模型资源合计约 **329 KB**，运行时约 **595 KB**。
+
+---
+
+## 模型：明日方舟 · 艾雅法拉
+
+- **角色与美术资源版权归 [鹰角网络 Hypergryph](https://www.hypergryph.com/) 所有。**
+- 提取来源：[isHarryh/Ark-Models](https://github.com/isHarryh/Ark-Models)（`models/180_amgoat`）
+  该仓库为社区整理的《明日方舟》Spine 模型收集，**本身不附带任何授权声明**。
+- 原始格式：Spine 3.8 骨骼动画（基建小人），含 6 组动画：
+  `Default`（待机）/ `Interact`（互动）/ `Move`（行走）/ `Relax`（放松）/ `Sit`（坐下）/ `Sleep`（睡觉）
+
+⚠️ **这是一份未获官方授权的同人使用。** 个人非商业博客使用通常被默许，但严格来说需要版权方许可。
+如果你打算把本站用于任何商业用途，**请移除这些文件**。
+
+---
+
+## 运行时：Spine Runtimes
+
+- 来源：[EsotericSoftware/spine-runtimes](https://github.com/EsotericSoftware/spine-runtimes)（tag `3.8`）
+- 许可：**Spine Runtimes License Agreement**（不是常见的开源许可证）
+
+该许可允许在应用中集成 Spine 运行时，但对使用条件有具体要求
+（例如商业项目需要有效的 Spine 编辑器授权）。
+完整条款见仓库根目录的 `LICENSE`，或 <https://esotericsoftware.com/spine-runtimes-license>。
+
+---
+
+## 如何移除桌宠
+
+如果决定不再使用，删除以下内容即可：
+
+```powershell
+Remove-Item -Recurse -Force public/pet-eyja
+Remove-Item src/components/DesktopPet.astro
+```
+
+同时把 `src/layouts/BaseLayout.astro` 里的这两行删掉：
+
+```astro
+import DesktopPet from "../components/DesktopPet.astro";
+...
+<DesktopPet />
+```
+
+其余功能不受影响。
