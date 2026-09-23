@@ -6,34 +6,52 @@
 //
 //  ⚠️ 这是一个「岛屿」：它必须发到浏览器才能跑，
 //     因为"被点击/被拖动"是运行时才发生的事，构建时无从得知。
+//
+//  ⚠️ 注意：本文件注释里不要写出 script 标签的字面量 ——
+//     Vite 的依赖扫描器会把它误认成真的脚本块起点，导致 dev 报 PARSE_ERROR。
 // ============================================================
 ---
 
-<!-- 整个容器默认不接收鼠标事件，只有精灵本体接收，避免挡住页面阅读 -->
+<!--
+  结构说明：
+    .pet-root   固定定位的容器，不吃鼠标事件（避免挡住页面阅读）
+    .pet-scale  只负责缩放（小屏时整体变小，不改变精灵图的取帧数学）
+    .pet-sprite 只负责翻转与动画（background-position 逐帧切换）
+  把"缩放"和"翻转"拆到两层，是为了避免两个 transform 互相覆盖。
+-->
 <div id="pet-root" class="pet-root" aria-hidden="true">
   <div id="pet-bubble" class="pet-bubble"></div>
-  <div id="pet-sprite" class="pet-sprite" title="点我 / 拖我"></div>
+  <div class="pet-scale">
+    <div id="pet-sprite" class="pet-sprite" title="点我 / 拖我"></div>
+  </div>
 </div>
 
 <style>
   .pet-root {
     position: fixed;
-    right: 18px;
-    bottom: 18px;
+    left: 0;
+    top: 0;
     z-index: 9999;
     pointer-events: none; /* 容器不吃事件 */
-    display: flex;
-    flex-direction: column;
-    align-items: center;
+    /* 位置由 JS 以 left/top 精确控制，初始值在脚本里根据窗口尺寸算出 */
+    will-change: left, top;
+  }
+
+  .pet-scale {
+    /* 只在需要时缩放；默认 1 */
+    transform: scale(var(--pet-scale, 1));
+    transform-origin: top left;
   }
 
   .pet-sprite {
-    /* 单帧尺寸，和精灵图格子严格一致 */
+    /* ★ 单帧尺寸，必须与精灵图格子严格一致。
+       动画是靠 background-position 平移实现的，
+       所以这个尺寸不能随便改 —— 要整体变大变小请改 --pet-scale。 */
     width: 144px;
     height: 176px;
     background-repeat: no-repeat;
     background-position: 0 0;
-    /* ★ 像素画必须开这个，否则浏览器会做平滑插值，看起来糊成一团 */
+    /* ★ 像素画必须开这个，否则浏览器会做平滑插值，糊成一团 */
     image-rendering: pixelated;
     -ms-interpolation-mode: nearest-neighbor;
     cursor: grab;
@@ -46,10 +64,17 @@
   }
   .pet-sprite:hover { filter: drop-shadow(0 8px 14px rgba(49, 111, 211, 0.35)); }
   .pet-sprite.dragging { cursor: grabbing; }
-  /* 朝向：walk 时按方向水平翻转 */
+
+  /* 朝向：走路时按方向水平翻转 */
   .pet-sprite.flip { transform: scaleX(-1); }
 
   .pet-bubble {
+    position: absolute;
+    bottom: 100%;
+    left: 50%;
+    transform: translate(-50%, 6px) scale(0.96);
+    margin-bottom: 8px;
+    width: max-content;
     max-width: 220px;
     background: #fff;
     color: var(--very-dark-gray, #222);
@@ -58,21 +83,18 @@
     padding: 6px 10px;
     font-size: 13px;
     line-height: 1.4;
-    margin-bottom: 8px;
     opacity: 0;
-    transform: translateY(6px) scale(0.96);
     transition: opacity 0.2s ease, transform 0.2s ease;
     pointer-events: none;
     text-align: center;
     font-family: var(--mono-basic, sans-serif);
   }
-  .pet-bubble.show { opacity: 1; transform: translateY(0) scale(1); }
+  .pet-bubble.show { opacity: 1; transform: translate(-50%, 0) scale(1); }
 
-  /* 小屏缩小，别挡住正文 */
+  /* 小屏：只缩放，不动尺寸数学 */
   @media (max-width: 600px) {
-    .pet-sprite { width: 96px; height: 117px; background-size: 96px 117px; }
-    .pet-root { right: 8px; bottom: 8px; }
-    .pet-bubble { max-width: 160px; font-size: 12px; }
+    .pet-root { --pet-scale: 0.62; }
+    .pet-bubble { max-width: 150px; font-size: 12px; }
   }
 
   /* 尊重系统的"减少动态效果"偏好 */
@@ -122,13 +144,53 @@
     img.src = SHEETS[key].src;
   }
 
+  // ---------- 位置状态（用 JS 变量持有，比反复读 computedStyle 可靠） ----------
+  const MARGIN = 18;
+  let posX = 0;
+  let posY = 0;
+
+  /** 当前整体缩放比例（小屏时会小于 1） */
+  function currentScale() {
+    const v = getComputedStyle(root).getPropertyValue("--pet-scale").trim();
+    const n = parseFloat(v);
+    return Number.isFinite(n) && n > 0 ? n : 1;
+  }
+
+  /** 按当前缩放算出的实际占位宽高 */
+  function petSize() {
+    const s = currentScale();
+    return { w: FRAME_W * s, h: FRAME_H * s };
+  }
+
+  function clampPosition() {
+    const { w, h } = petSize();
+    posX = Math.min(Math.max(posX, 0), Math.max(0, window.innerWidth - w));
+    posY = Math.min(Math.max(posY, 0), Math.max(0, window.innerHeight - h));
+  }
+
+  function applyPosition() {
+    root.style.left = `${posX}px`;
+    root.style.top = `${posY}px`;
+  }
+
+  // 初始位置：右下角
+  posX = window.innerWidth - FRAME_W - MARGIN;
+  posY = window.innerHeight - FRAME_H - MARGIN;
+  clampPosition();
+  applyPosition();
+
+  window.addEventListener("resize", () => {
+    clampPosition();
+    applyPosition();
+  });
+
   // ---------- 状态机 ----------
   let state = "idle";
   let frame = 0;
   let acc = 0;
   let last = performance.now();
   let facing = 1; // 1 = 朝右, -1 = 朝左
-  let busyUntil = 0; // 非循环动画播完之前，不允许被打断
+  let busyUntil = 0; // 非循环动画播完之前不允许被打断
   let idleSince = performance.now();
   let dragging = false;
 
@@ -138,15 +200,14 @@
     frame = 0;
     acc = 0;
     sprite.style.backgroundImage = `url(${SHEETS[next].src})`;
-    // 朝向只对走路有意义
     sprite.classList.toggle("flip", next === "walk" && facing < 0);
   }
 
   function say(text) {
     bubble.textContent = text;
     bubble.classList.add("show");
-    window.clearTimeout(say._t);
-    say._t = window.setTimeout(() => bubble.classList.remove("show"), 2600);
+    clearTimeout(say._t);
+    say._t = setTimeout(() => bubble.classList.remove("show"), 2600);
   }
 
   /** 播放一次非循环动画，期间锁定状态 */
@@ -157,7 +218,9 @@
 
   // ---------- 主循环 ----------
   function tick(now) {
-    const dt = now - last;
+    // ★ 夹住 dt：标签页切到后台再切回来时，now-last 可能是几十秒，
+    //   不夹住的话下面的 while 循环会空转成千上万次。
+    const dt = Math.min(now - last, 100);
     last = now;
 
     // 非循环动画播完后回到 idle
@@ -170,25 +233,20 @@
     const sheet = SHEETS[state];
     acc += dt;
     const frameMs = 1000 / sheet.fps;
-    while (acc >= frameMs) {
+    let guard = 0;
+    while (acc >= frameMs && guard++ < 8) {
       acc -= frameMs;
       frame++;
-      if (frame >= sheet.frames) {
-        if (sheet.loop) {
-          frame = 0;
-        } else {
-          frame = sheet.frames - 1;
-        }
-      }
+      if (frame >= sheet.frames) frame = sheet.loop ? 0 : sheet.frames - 1;
     }
     sprite.style.backgroundPosition = `${-frame * FRAME_W}px 0`;
 
-    // 挂机一段时间后自己睡觉（拖动中、忙时不睡）
+    // 挂机久了就睡（拖动中、播动画时不睡）
     if (!dragging && !busyUntil && state === "idle" && now - idleSince > 25000) {
       setState("sleep");
     }
 
-    // 偶尔眨个眼，让它看起来是活的
+    // 偶尔眨眼，让它看起来是活的（约每 10 秒一次）
     if (state === "idle" && !busyUntil && Math.random() < 0.0016) {
       playOnce("blink", 500);
     }
@@ -199,27 +257,29 @@
   requestAnimationFrame(tick);
 
   // ---------- 互动 1：随机散步 ----------
+  let wanderTimer = null;
+
+  function scheduleWander(delay) {
+    clearTimeout(wanderTimer);
+    wanderTimer = setTimeout(wander, delay);
+  }
+
   function wander() {
+    // 睡着、被拖动、正在播动画时，改天再说
     if (dragging || busyUntil || state === "sleep") {
-      window.setTimeout(wander, 4000);
+      scheduleWander(4000);
       return;
     }
+
     const dir = Math.random() < 0.5 ? -1 : 1;
     facing = dir;
     setState("walk");
 
-    const startX = root.offsetLeft;
-    const startY = root.offsetTop;
-    // 用 fixed 定位时 offsetLeft/Top 是相对包含块的当前值，这里记录初始值
-    const baseLeft = parseFloat(getComputedStyle(root).left);
-    const baseTop = parseFloat(getComputedStyle(root).top);
-    const fromX = isNaN(baseLeft) ? window.innerWidth - 180 : baseLeft;
-    const fromY = isNaN(baseTop) ? window.innerHeight - 220 : baseTop;
-
-    const dist = 40 + Math.random() * 120;
-    const toX = Math.min(
-      Math.max(fromX + dir * dist, 8),
-      window.innerWidth - FRAME_W - 8
+    const { w } = petSize();
+    const fromX = posX;
+    const targetX = Math.min(
+      Math.max(posX + dir * (40 + Math.random() * 120), 0),
+      Math.max(0, window.innerWidth - w)
     );
 
     const duration = 900 + Math.random() * 700;
@@ -227,26 +287,26 @@
 
     function step(now) {
       const p = Math.min((now - t0) / duration, 1);
+      // easeInOutQuad，起步和收尾都平缓一点
       const ease = p < 0.5 ? 2 * p * p : 1 - Math.pow(-2 * p + 2, 2) / 2;
-      const x = fromX + (toX - fromX) * ease;
-      root.style.left = `${x}px`;
-      root.style.top = `${fromY}px`;
-      root.style.right = "auto";
-      root.style.bottom = "auto";
-      if (p < 1) requestAnimationFrame(step);
-      else {
+      posX = fromX + (targetX - fromX) * ease;
+      applyPosition();
+      if (p < 1) {
+        requestAnimationFrame(step);
+      } else {
         setState("idle");
         idleSince = performance.now();
-        window.setTimeout(wander, 3000 + Math.random() * 6000);
+        scheduleWander(3000 + Math.random() * 6000);
       }
     }
     requestAnimationFrame(step);
   }
-  window.setTimeout(wander, 6000);
+
+  scheduleWander(6000);
 
   // ---------- 互动 2：点击摸摸头 ----------
   sprite.addEventListener("click", () => {
-    if (dragging) return;
+    if (movedDistance > 12) return; // 那是拖动，不是点击
     playOnce(Math.random() < 0.5 ? "wave" : "happy", 900);
     say(QUOTES[Math.floor(Math.random() * QUOTES.length)]);
     idleSince = performance.now();
@@ -263,32 +323,28 @@
     const r = root.getBoundingClientRect();
     dragOffsetX = e.clientX - r.left;
     dragOffsetY = e.clientY - r.top;
-    root.style.left = `${r.left}px`;
-    root.style.top = `${r.top}px`;
-    root.style.right = "auto";
-    root.style.bottom = "auto";
     sprite.classList.add("dragging");
-    sprite.setPointerCapture(e.pointerId);
+    try {
+      sprite.setPointerCapture(e.pointerId);
+    } catch {}
     setState("walk");
     idleSince = performance.now();
+    e.preventDefault();
   });
 
   sprite.addEventListener("pointermove", (e) => {
     if (!dragging) return;
     movedDistance += Math.abs(e.movementX || 0) + Math.abs(e.movementY || 0);
-    facing = (e.movementX || 0) < 0 ? -1 : 1;
-    sprite.classList.toggle("flip", facing < 0);
 
-    const x = Math.min(
-      Math.max(e.clientX - dragOffsetX, 0),
-      window.innerWidth - FRAME_W
-    );
-    const y = Math.min(
-      Math.max(e.clientY - dragOffsetY, 0),
-      window.innerHeight - FRAME_H
-    );
-    root.style.left = `${x}px`;
-    root.style.top = `${y}px`;
+    if ((e.movementX || 0) !== 0) {
+      facing = e.movementX < 0 ? -1 : 1;
+      sprite.classList.toggle("flip", facing < 0);
+    }
+
+    posX = e.clientX - dragOffsetX;
+    posY = e.clientY - dragOffsetY;
+    clampPosition();
+    applyPosition();
   });
 
   function endDrag(e) {
@@ -300,12 +356,20 @@
     } catch {}
     setState("idle");
     idleSince = performance.now();
-    // 拖完说句话（避免和 click 重复：位移很小才算点击）
-    if (movedDistance > 12) {
-      say("这里视野不错～");
-    }
-    window.setTimeout(wander, 4000);
+    // 真的搬动了才说话（轻微抖动不算）
+    if (movedDistance > 12) say("这里视野不错～");
+    scheduleWander(5000);
   }
   sprite.addEventListener("pointerup", endDrag);
   sprite.addEventListener("pointercancel", endDrag);
+
+  // 键盘可达性：Tab 能聚焦，回车等于点一下
+  sprite.tabIndex = 0;
+  sprite.addEventListener("keydown", (e) => {
+    if (e.key === "Enter" || e.key === " ") {
+      e.preventDefault();
+      playOnce("wave", 900);
+      say(QUOTES[Math.floor(Math.random() * QUOTES.length)]);
+    }
+  });
 </script>
