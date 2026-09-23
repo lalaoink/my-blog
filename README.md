@@ -1,22 +1,26 @@
-# 我的博客 · My Blog
+# 言与叶之庭
 
-一个用 **Astro** 搭建的个人博客，展示文章与教程，并带一个网页桌宠和 Bangumi 追番列表。
+一个用 **Astro** 搭建的静态博客：文章与教程展示、网页桌宠、Bangumi 追番列表。
 
-参考版式：[wordland.site](https://wordland.site/)（朋友的站，同样是 Astro + Netlify）
+版式参考：[wordland.site](https://wordland.site/)（朋友的站，同样是 Astro + Netlify）
+**注意：仅参考其版式与设计，未使用其任何文章内容。**
 
 ---
 
-## 🚦 现在是什么状态
+## 🚦 当前状态
 
-**骨架已就绪，等你写第一个页面。**
+**整站已可运行，全部页面通过验证。**
 
 | 部分 | 状态 |
 | --- | --- |
-| 工具链（Node / npm / Git / VS Code 扩展） | ✅ 已完成 |
-| Astro 项目骨架（`package.json` / `astro.config.mjs`） | ✅ 已完成 |
-| 阶段 1 练习：`playground/index.html` | ⏳ **等你做**（复制 `playground/example.html` 改三处文字） |
-| 阶段 2：`src/pages/index.astro` | ⏳ 参考示例已备好（`playground/example.astro`） |
-| 阶段 3 起（文章系统 / 桌宠 / Bangumi / 部署） | 未开始 |
+| 极简文学风版式（设计令牌照搬参考站） | ✅ 完成 |
+| 首页 / 文章列表 / 文章详情 / 关于 / 追番 | ✅ 5 类页面全部可用（`astro build` 出 7 个 HTML） |
+| 文章系统（Markdown + frontmatter 校验） | ✅ 完成，含 3 篇起始文章 |
+| 文章详情页 | ✅ 含目录、上下篇导航、Shiki 代码高亮 |
+| 鲸鱼娘桌宠 | ✅ 6 组动画、点击互动、拖拽、随机散步、自动睡觉 |
+| Bangumi 追番 | ✅ 抓取脚本 + Actions 定时更新已验证；⚠️ 你的账号目前收藏为空，页面显示空状态 |
+| 部署配置 | ✅ `netlify.toml` 就绪 |
+| **GitHub 远端 + 实际上线** | ⏳ **待做**（需要你的 SSH 公钥） |
 
 ---
 
@@ -26,18 +30,14 @@
 npm run dev
 ```
 
-然后浏览器打开 **http://localhost:4321**
-
-> 现在还看不到东西，首页会返回 404 —— 因为 `src/pages/index.astro` 还没写。
-> 写完它，`/` 就通了。
-
-其它命令：
+浏览器打开 **http://localhost:4321**
 
 | 命令 | 作用 |
 | --- | --- |
-| `npm run dev` | 启动开发服务器（改代码自动刷新） |
-| `npm run build` | 生成静态站点到 `dist/`（用来部署） |
-| `npm run preview` | 本地预览 `dist/` 里的成品 |
+| `npm run dev` | 开发服务器（改代码自动刷新） |
+| `npm run build` | 生成静态站点到 `dist/` |
+| `npm run preview` | 本地预览 `dist/` 成品 |
+| `npm run bangumi` | 重新拉取 Bangumi 追番数据 |
 
 ---
 
@@ -45,49 +45,93 @@ npm run dev
 
 ```
 my-blog/
-├── astro.config.mjs      Astro 配置
-├── package.json          项目定义（依赖 + 脚本）
-├── docs/                 📘 学习文档（**要学的都在这儿**）
-├── playground/           练习场：example.html / example.astro 参考示例
-├── src/pages/            ⭐ 页面放这里。「路由即文件」：
-│                           src/pages/index.astro  →  /
-│                           src/pages/about.astro  →  /about
-├── .vscode/              编辑器配置（推荐扩展 + 工作区设置）
-└── .gitignore            别提交 node_modules / dist / .env
+├── astro.config.mjs           Astro 配置
+├── netlify.toml               部署配置
+├── docs/                      📘 学习文档（00 是入口）
+├── playground/                练习场
+│   ├── example.html           逐行注释的 HTML/CSS/JS 参考
+│   ├── example.astro          构建时 vs 运行时的参考
+│   ├── example-layout.astro   布局组件参考
+│   ├── example-post.astro     文章详情页参考
+│   └── Another/               ← 你自己写的练习
+├── public/
+│   ├── favicon.svg
+│   └── pet/                   鲸鱼娘精灵图（MIT，来自 deepseek-whale-pet）
+├── scripts/
+│   └── fetch-bangumi.mjs      Bangumi 抓取（自动翻页，limit 上限 50）
+└── src/
+    ├── components/DesktopPet.astro   桌宠（客户端岛屿）
+    ├── layouts/BaseLayout.astro      全站外壳
+    ├── styles/global.css             设计令牌与版式
+    ├── data/bangumi.json             抓取产物（静态数据）
+    ├── content/blog/*.md             文章
+    ├── content.config.ts             文章 frontmatter 格式定义
+    └── pages/                        页面（路由即文件）
 ```
-
-**一个 Astro 项目的最小构成**就 4 样：`package.json`、`astro.config.mjs`、`src/pages/`、`node_modules/`。
-其余的都可以不要。
 
 ---
 
-## 📘 学习文档怎么读
+## ✍️ 怎么加一篇文章
 
-按顺序，或者遇到问题时按需查：
+在 `src/content/blog/` 里新建一个 `.md` 文件：
+
+```markdown
+---
+title: 文章标题
+date: 2026-09-23
+description: 一句话摘要（可选）
+tags: ["标签"]
+---
+
+正文用 Markdown 写。
+```
+
+**不需要改任何代码**，文件丢进去就会出现在列表里。
+
+---
+
+## 🐋 桌宠怎么互动
+
+| 操作 | 反应 |
+| --- | --- |
+| 什么都不做 | 每几秒随机眨眼；25 秒后犯困睡着 |
+| 鼠标移到身上 | 出现高亮阴影 |
+| **点一下** | 切换挥手/开心动画，随机说一句话 |
+| **按住拖动** | 跟着鼠标走，松手后留在原地 |
+| 放着一会儿 | 会自己左右散步 |
+
+素材来自 [deepseek-whale-pet](https://github.com/chenthreegold/deepseek-whale-pet)（MIT License），
+像素形象由 DeepSeek 自己逐像素绘制。许可证见 `public/pet/`。
+
+---
+
+## 📚 学习文档怎么读
 
 | 文档 | 什么时候读 |
 | --- | --- |
-| [`docs/00-学习路线与进度.md`](docs/00-学习路线与进度.md) | **入口**。六阶段路线图 + 任务清单 + 进度日志 |
-| [`docs/01-C++程序员的思维转换.md`](docs/01-C++程序员的思维转换.md) | 想不通前端概念时。C++ → 前端对照表 |
-| [`docs/02-Bangumi接入预研与风险.md`](docs/02-Bangumi接入预研与风险.md) | 做追番列表前 |
-| [`docs/03-参考站设计令牌与技法拆解.md`](docs/03-参考站设计令牌与技法拆解.md) | 写 CSS 前。配色、`65ch` 排版法、动画 |
-| [`docs/04-本机网络环境实测与对策.md`](docs/04-本机网络环境实测与对策.md) | **动工前必读**。解释了为什么有些命令在你这台机器上不一样 |
+| [`docs/00-学习路线与进度.md`](docs/00-学习路线与进度.md) | **入口**：路线图 + 进度日志 |
+| [`docs/01-C++程序员的思维转换.md`](docs/01-C++程序员的思维转换.md) | 想不通前端概念时 |
+| [`docs/02-Bangumi接入预研与风险.md`](docs/02-Bangumi接入预研与风险.md) | 想改追番功能时 |
+| [`docs/03-参考站设计令牌与技法拆解.md`](docs/03-参考站设计令牌与技法拆解.md) | 想调样式时 |
+| [`docs/04-本机网络环境实测与对策.md`](docs/04-本机网络环境实测与对策.md) | **动工前必读**：解释本机的网络限制 |
 
 ---
 
-## ⚠️ 这台机器的三个特殊之处
+## ⚠️ 本机环境的三个特殊之处
 
-不了解会白白卡住好几小时，详见 [`docs/04`](docs/04-本机网络环境实测与对策.md)：
+详见 [`docs/04`](docs/04-本机网络环境实测与对策.md)：
 
-1. **`npm create astro@latest` 用不了** —— 它要从 `github.com` 拉模板，而这个域名的 HTTPS 在这里被阻断。
-   本项目的骨架是**手动搭建**的，你不需要再跑那条命令。
-2. **本机访问不了 `bgm.tv`** —— 所以追番列表将来由 GitHub Actions 在境外拉取，产出 JSON 提交回仓库。
-3. **推代码到 GitHub 必须用 SSH**（`git@github.com:...`），HTTPS 通道不通。
+1. **`npm create astro@latest` 用不了** —— 要从 `github.com` 拉模板，而该域名 HTTPS 被阻断。本项目是手动搭的，不需要它。
+2. **本机直连访问不了 `bgm.tv` / `github.com`** —— 但你的 **Clash Verge 代理（127.0.0.1:7897）可以打通**。跑 Bangumi 脚本前先设：
+   ```powershell
+   $env:HTTPS_PROXY="http://127.0.0.1:7897"; $env:NODE_USE_ENV_PROXY="1"
+   ```
+3. **推代码到 GitHub 用 SSH**（`git@github.com:...`），HTTPS 通道不通。
 
 ---
 
 ## ✍️ 写作约定
 
-- 代码用 2 空格缩进（`.vscode/settings.json` 已配好）
+- 代码 2 空格缩进（`.vscode/settings.json` 已配）
 - 文件统一 UTF-8 **无 BOM**
 - 每次收工前 `git commit` 一次

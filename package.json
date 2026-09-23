@@ -6,7 +6,8 @@
     "dev": "astro dev",
     "build": "astro build",
     "preview": "astro preview",
-    "astro": "astro"
+    "astro": "astro",
+    "bangumi": "node scripts/fetch-bangumi.mjs"
   },
   "license": "MIT",
   "type": "module",
