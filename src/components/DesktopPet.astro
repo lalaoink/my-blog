@@ -475,6 +475,16 @@
       drawCount = 1;
 
       status("ready,vp=" + window.innerWidth + "x" + window.innerHeight);
+
+      // 自检：数一下画布上真实画出的像素（确认网格部件没有被跳过）
+      try {
+        const px = ctx2d.getImageData(0, 0, canvas.width, canvas.height).data;
+        let n = 0;
+        for (let i = 3; i < px.length; i += 4) if (px[i] > 8) n++;
+        status("drawn=" + n);
+      } catch (e) {
+        status("probe-failed:" + e.message);
+      }
       idleSince = performance.now();
       scheduleWander(6000);
     } catch (err) {
