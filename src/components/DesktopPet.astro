@@ -19,10 +19,23 @@
     .pet-sprite 只负责翻转与动画（background-position 逐帧切换）
   把"缩放"和"翻转"拆到两层，是为了避免两个 transform 互相覆盖。
 -->
-<div id="pet-root" class="pet-root" aria-hidden="true">
-  <div id="pet-bubble" class="pet-bubble"></div>
+<div id="pet-root" class="pet-root">
+  <div id="pet-bubble" class="pet-bubble" role="status" aria-live="polite"></div>
   <div class="pet-scale">
-    <div id="pet-sprite" class="pet-sprite" title="点我 / 拖我"></div>
+    <!--
+      注意：这里不能用 aria-hidden="true"。
+      aria-hidden 的元素不应该可聚焦，而下面这个既要能 Tab 聚焦、
+      又要能被读屏软件念出来，两者冲突会造成无障碍违规。
+      正确做法是用 role + aria-label 描述它是干什么的。
+    -->
+    <div
+      id="pet-sprite"
+      class="pet-sprite"
+      role="button"
+      tabindex="0"
+      aria-label="鲸鱼娘桌宠：点击或按回车和它说话，也可以按住拖动"
+      title="点我 / 拖我"
+    ></div>
   </div>
 </div>
 
@@ -363,13 +376,14 @@
   sprite.addEventListener("pointerup", endDrag);
   sprite.addEventListener("pointercancel", endDrag);
 
-  // 键盘可达性：Tab 能聚焦，回车等于点一下
-  sprite.tabIndex = 0;
+  // 键盘可达性：Tab 能聚焦，回车/空格等于点一下
+  // （tabindex 与 role 写在模板里，这里只补键盘行为）
   sprite.addEventListener("keydown", (e) => {
     if (e.key === "Enter" || e.key === " ") {
       e.preventDefault();
       playOnce("wave", 900);
       say(QUOTES[Math.floor(Math.random() * QUOTES.length)]);
+      idleSince = performance.now();
     }
   });
 </script>
