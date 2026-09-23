@@ -1,0 +1,104 @@
+---
+// ============================================================
+//  文章详情页的参考示例（动态路由）
+//
+//  ⚠️ 放在 playground/ 里只是给你读的。
+//     真正要用时，路径必须是：src/pages/posts/[...id].astro
+//
+//  「动态路由」的意思：一个文件，处理无数个网址。
+//    src/pages/posts/[...id].astro  →  /posts/任意id
+//
+//  对比你之前做的：
+//    src/pages/about.astro  → 一个文件 = 一个固定网址
+//    动态路由                → 一个文件 = 一类网址
+//
+//  这就像 C++ 里的函数：不是为每个输入写一遍代码，而是写一个能处理
+//  任意输入的 function。getStaticPaths() 就是告诉 Astro「有哪些输入」。
+// ============================================================
+
+import { getCollection, render } from "astro:content";
+
+// getStaticPaths 在【构建时】被调用，返回所有需要生成的页面。
+// 有 10 篇文章，它就返回 10 项，Astro 就生成 10 个 HTML 文件。
+export async function getStaticPaths() {
+  const posts = await getCollection("blog");
+
+  // 只生成非草稿的（draft: true 的文章不发布）
+  const published = posts.filter((post) => !post.data.draft);
+
+  return published.map((post) => ({
+    params: { id: post.id }, // 决定网址：/posts/<id>
+    props: { post }, // 把数据传给下面的模板
+  }));
+}
+
+// Astro.props 拿到上面传下来的 post
+const { post } = Astro.props;
+
+// render() 把 Markdown 正文编译成可渲染的组件
+const { Content } = await render(post);
+---
+
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <title>{post.data.title}</title>
+    {post.data.description && <meta name="description" content={post.data.description} />}
+    <style>
+      body {
+        font-family: "Microsoft YaHei", "PingFang SC", sans-serif;
+        max-width: 65ch;
+        margin: auto;
+        padding: 20px;
+        line-height: 1.6;
+        color: #444;
+      }
+      h1, h2, h3 { color: #222; }
+      a { color: #316fd3; text-decoration: none; }
+      a:hover { text-decoration: underline; }
+      time { font-style: italic; color: #6a6d6e; }
+    </style>
+  </head>
+
+  <body>
+    <h1>{post.data.title}</h1>
+    <p><time>{post.data.date.toLocaleDateString("zh-CN")}</time></p>
+
+    <!--
+      ★ 这一行就渲染出了整篇 Markdown 正文。
+        你在 .md 里写的 ## 标题、**粗体**、代码块、列表，
+        全部被自动转成了正确的 HTML。
+    -->
+    <Content />
+
+    <p><a href="/posts">← 返回文章列表</a></p>
+  </body>
+</html>
+
+<!--
+  ============================================================
+  【配套要做的事】
+
+  1. 这个文件另存为  src/pages/posts/[...id].astro
+
+  2. 在  src/content/blog/  里新建文章，例如 hello.md：
+
+     ---
+     title: 我的第一篇文章
+     date: 2026-09-23
+     tags: ["随笔"]
+     ---
+
+     正文用 Markdown 写。这里是 **粗体**，下面是列表：
+
+     - 第一点
+     - 第二点
+
+  3. 访问 http://localhost:4321/posts/hello
+
+  ★ 关键理解：
+    你只写了 1 个 .astro 文件，但它能渲染【所有】文章。
+    加一篇新文章 = 往 src/content/blog/ 丢一个 .md 文件，不用改任何代码。
+    这就是静态站点生成器（SSG）的核心价值。
+  ============================================================
+-->
