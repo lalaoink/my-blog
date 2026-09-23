@@ -1,0 +1,100 @@
+# ============================================================
+#  内容管理（CMS）配置
+#
+#  这个文件决定「后台长什么样、能改哪些文件」。
+#  界面在 /admin/ ，由 public/admin/index.html 加载。
+#
+#  ⚠️ 部署到 Netlify 后需要开启一次认证，见本文件末尾的说明。
+# ============================================================
+
+# ---------- 后端 ----------
+# git-gateway = 走 Netlify 的 Identity + Git Gateway。
+# 好处：不需要自己去 GitHub 注册 OAuth 应用，在 Netlify 后台点几下即可。
+# 代价：需要先部署到 Netlify 才能用。
+backend:
+  name: git-gateway
+  branch: main
+
+# ---------- 媒体（图片）----------
+# 在编辑器里插入图片时，文件会被提交到这个目录。
+# Astro 会把 public/ 原样复制到站点根目录，所以 /uploads/xxx.png 可以直接访问。
+media_folder: "public/uploads"
+public_folder: "/uploads"
+
+# ---------- 站点语言 ----------
+# 让后台界面显示中文
+locale: zh_Hans
+
+# ---------- 内容集合 ----------
+collections:
+  - name: blog
+    label: 文章
+    label_singular: 文章
+    # 新建的文章会写到这个目录 —— 和 Astro 的 content collection 一致
+    folder: "src/content/blog"
+    create: true # 允许新建
+    delete: true # 允许删除（这就是你要的删除入口）
+    publish: true
+    extension: md
+    format: frontmatter
+    # 文件名由标题自动生成
+    slug: "{{slug}}"
+    # 列表里显示标题和日期
+    summary: "{{title}} — {{date}}"
+    sortable_fields: ["date", "title"]
+    view_filters:
+      - label: 只看草稿
+        field: draft
+        pattern: true
+
+    # 字段必须和 src/content.config.ts 里定义的一致，
+    # 否则构建时 Astro 会报 frontmatter 校验失败。
+    fields:
+      - label: 标题
+        name: title
+        widget: string
+        hint: 会显示在文章列表和浏览器标签页上
+
+      - label: 日期
+        name: date
+        widget: datetime
+        date_format: "YYYY-MM-DD"
+        time_format: false
+        picker_utc: false
+        hint: 列表按这个日期倒序排列
+
+      - label: 摘要
+        name: description
+        widget: text
+        required: false
+        hint: 一句话概括，显示在列表页。可以留空。
+
+      - label: 标签
+        name: tags
+        widget: list
+        required: false
+        default: []
+        hint: 回车添加一个标签，例如「前端」「教程」
+
+      - label: 草稿
+        name: draft
+        widget: boolean
+        default: false
+        hint: 打开后文章不会发布（构建时被过滤掉）
+
+      - label: 正文
+        name: body
+        widget: markdown
+        hint: 支持完整 Markdown；工具栏有标题、粗体、链接、图片、代码块、表格等
+
+# ============================================================
+#  部署后需要做的一次性配置
+#
+#  1. Netlify 后台 → Site configuration → Identity → 点 Enable Identity
+#  2. Identity → Services → 开启 Git Gateway
+#  3. Identity → Invite users → 填你自己的邮箱，接受邀请并设置密码
+#  4. 打开 https://你的域名/admin/ ，用刚才的邮箱密码登录
+#
+#  之后就能在网页上写/改/删文章了，改动会自动 commit 到 GitHub 仓库，
+#  Netlify 检测到新提交会自动重新构建并上线 —— 全程不需要碰 git 命令。
+# ============================================================

@@ -6,3 +6,5 @@ console.log(typeof n);
 const nm = "Adele";
 const age = 17;
 console.log(`My name is ${nm} and I am ${age} years old.`);
+const s = "man , what , can , I , say";
+console.log(s.split(", "));
