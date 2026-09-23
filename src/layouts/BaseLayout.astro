@@ -3,7 +3,9 @@
 //  全站布局外壳：导航条 + 页脚 + 桌宠 + 全局样式
 //
 //  ⚠️ 这个文件里的代码全部在【构建时】执行（frontmatter 部分），
-//     只有 <script> 里的代码会发到浏览器。
+//     只有底部 script 标签里的代码会发到浏览器。
+//     （注意：注释里不要写出 script 标签的字面量，Vite 的依赖扫描器
+//       会把它误认成真的脚本块起点，导致 dev 报 PARSE_ERROR。）
 // ============================================================
 import "../styles/global.css";
 import DesktopPet from "../components/DesktopPet.astro";
