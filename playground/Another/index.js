@@ -5,4 +5,4 @@ const n = true;
 console.log(typeof n);
 const nm = "Adele";
 const age = 17;
-console.log("My name is $")
+console.log(`My name is ${nm} and I am ${age} years old.`);

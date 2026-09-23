@@ -51,9 +51,10 @@
   }
 
   .pet-canvas {
-    /* 显示尺寸；内部像素尺寸由 JS 按 devicePixelRatio 设置，保证清晰 */
-    width: 118px;
-    height: 173px;
+    /* 显示尺寸；内部像素尺寸由 JS 按 devicePixelRatio 设置，保证清晰。
+       模型是 262x385（比例 0.68），角色细节很密，太小会看不清五官 */
+    width: 145px;
+    height: 216px;
     display: block;
     cursor: grab;
     pointer-events: auto;
@@ -168,7 +169,7 @@
     const s = currentScale();
     const r = canvas.getBoundingClientRect();
     // 用实际渲染尺寸更可靠（CSS 尺寸 × 缩放）
-    return { w: r.width || 118 * s, h: r.height || 173 * s };
+    return { w: r.width || 145 * s, h: r.height || 216 * s };
   }
   function clampPosition() {
     const { w, h } = petSize();
@@ -185,8 +186,8 @@
     // ⚠️ 必须夹取范围：getBoundingClientRect 在读到的瞬间可能还没反映
     //    CSS 的 right/bottom 定位（样式表刚注入、布局尚未稳定等），
     //    直接拿 r.left/r.top 会让桌宠飞到屏幕外。
-    const w = r.width || canvas.getBoundingClientRect().width || 118;
-    const h = r.height || canvas.getBoundingClientRect().height || 173;
+    const w = r.width || canvas.getBoundingClientRect().width || 145;
+    const h = r.height || canvas.getBoundingClientRect().height || 216;
     posX = Math.min(Math.max(r.left, 0), Math.max(0, window.innerWidth - w));
     posY = Math.min(Math.max(r.top, 0), Math.max(0, window.innerHeight - h));
     root.style.right = "auto";
@@ -220,13 +221,14 @@
   let skeleton = null;
   let animState = null;
   let renderer = null;
+  let ctx2d = null;
   let ready = false;
 
   function setupCanvas(dpr) {
     canvas.width = MODEL_W * dpr;
     canvas.height = CANVAS_H * dpr;
-    canvas.style.width = "118px";
-    canvas.style.height = "173px";
+    canvas.style.width = "145px";
+    canvas.style.height = "216px";
   }
 
   function setState(name) {
@@ -253,6 +255,18 @@
     bubble.classList.add("show");
     clearTimeout(say._t);
     say._t = setTimeout(() => bubble.classList.remove("show"), 2600);
+  }
+
+  /** 画一帧。
+   *  ⚠️ SkeletonRenderer 自己【不会清屏】—— 通读 spine-canvas.js，
+   *     clearRect 出现 0 次。不清的话每一帧都叠在上一帧上，
+   *     看起来就是重影 / 拖尾。所以必须手动清。 */
+  function drawFrame(dt) {
+    ctx2d.clearRect(0, 0, canvas.width, canvas.height);
+    animState.update(dt);
+    animState.apply(skeleton);
+    skeleton.updateWorldTransform();
+    renderer.draw(skeleton);
   }
 
   // ---------- 状态变量 ----------
@@ -289,10 +303,7 @@
         else if (state === "sit" && idleFor > 75000) setState("sleep");
       }
 
-      animState.update(dt);
-      animState.apply(skeleton);
-      skeleton.updateWorldTransform();
-      renderer.draw(skeleton);
+      drawFrame(dt);
 
       // 探针：确认真的在绘制
       drawCount++;
@@ -439,10 +450,19 @@
       skeleton.scaleY = -dpr;
 
       animState = new spine.AnimationState(new spine.AnimationStateData(data));
+
       // ⚠️ SkeletonRenderer 的构造函数要的是 **2D 上下文**，不是 canvas 元素。
       //    源码：function SkeletonRenderer(context) { this.ctx = context; }
-      //    传 canvas 元素会报 "ctx.save is not a function"。
-      renderer = new spine.canvas.SkeletonRenderer(canvas.getContext("2d"));
+      ctx2d = canvas.getContext("2d");
+      renderer = new spine.canvas.SkeletonRenderer(ctx2d);
+
+      // ★ 必须开 triangleRendering。
+      //   默认的 drawImages() 只处理 RegionAttachment，遇到别的直接 continue ——
+      //   而方舟的头发、外套等大面积部件都是 MeshAttachment（网格），
+      //   不开这个开关它们会被整片跳过（表现就是"没有头发"）。
+      //   drawTriangles() 才会走 computeMeshVertices 把网格画出来。
+      //   代价是逐三角 clip + drawImage，比整图绘制慢，但桌宠尺寸小，可以接受。
+      renderer.triangleRendering = true;
 
       ready = true;
       state = "";
@@ -451,10 +471,7 @@
       // ★ 立即同步画一帧。
       //   不能只依赖 requestAnimationFrame：标签页在后台、或被浏览器节流时，
       //   rAF 可能长时间不触发，桌宠就会一直空着。先画一帧保证立即可见。
-      animState.update(0);
-      animState.apply(skeleton);
-      skeleton.updateWorldTransform();
-      renderer.draw(skeleton);
+      drawFrame(0);
       drawCount = 1;
 
       status("ready,vp=" + window.innerWidth + "x" + window.innerHeight);
