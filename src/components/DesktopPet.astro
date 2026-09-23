@@ -42,11 +42,14 @@
 <style>
   .pet-root {
     position: fixed;
-    left: 0;
-    top: 0;
+    /* ★ 静止位置交给 CSS（right/bottom）。
+       不要用 JS 算初始 left/top —— 脚本执行那一刻拿到的 innerWidth
+       未必等于最终视口宽度（无头浏览器、页面缩放、首屏未稳定都会偏差），
+       位置会歪掉。只有真的要移动时才切换成 left/top。 */
+    right: 18px;
+    bottom: 18px;
     z-index: 9999;
     pointer-events: none; /* 容器不吃事件 */
-    /* 位置由 JS 以 left/top 精确控制，初始值在脚本里根据窗口尺寸算出 */
     will-change: left, top;
   }
 
@@ -110,6 +113,14 @@
     .pet-bubble { max-width: 150px; font-size: 12px; }
   }
 
+  /* 中等宽度时正文栏和桌宠会重叠，略降不透明度保证还能读清字。
+     悬停时恢复不透明。宽屏（>1000px）下正文栏居中、桌宠靠右，不会重叠。 */
+  @media (max-width: 1000px) {
+    .pet-sprite { opacity: 0.85; }
+    .pet-sprite:hover,
+    .pet-sprite.dragging { opacity: 1; }
+  }
+
   /* 尊重系统的"减少动态效果"偏好 */
   @media (prefers-reduced-motion: reduce) {
     .pet-sprite { transition: none; }
@@ -157,10 +168,11 @@
     img.src = SHEETS[key].src;
   }
 
-  // ---------- 位置状态（用 JS 变量持有，比反复读 computedStyle 可靠） ----------
-  const MARGIN = 18;
+  // ---------- 位置状态 ----------
+  // 初始位置由 CSS 的 right/bottom 决定，这里只在需要移动时才接管。
   let posX = 0;
   let posY = 0;
+  let positioned = false; // 是否已经把 right/bottom 换成 left/top
 
   /** 当前整体缩放比例（小屏时会小于 1） */
   function currentScale() {
@@ -186,19 +198,30 @@
     root.style.top = `${posY}px`;
   }
 
-  // 初始位置：右下角
-  posX = window.innerWidth - FRAME_W - MARGIN;
-  posY = window.innerHeight - FRAME_H - MARGIN;
-  clampPosition();
-  applyPosition();
+  /** 把"CSS 定位"切换成"JS 坐标定位"，切换时以当前实际位置为准 */
+  function ensurePositioned() {
+    if (positioned) return;
+    const r = root.getBoundingClientRect();
+    posX = r.left;
+    posY = r.top;
+    root.style.right = "auto";
+    root.style.bottom = "auto";
+    applyPosition();
+    positioned = true;
+  }
 
   window.addEventListener("resize", () => {
+    if (!positioned) return; // 还靠 CSS 定位时，浏览器自己会处理
     clampPosition();
     applyPosition();
   });
 
   // ---------- 状态机 ----------
-  let state = "idle";
+  // ⚠️ 初值必须是空字符串，不能是 "idle"。
+  //    因为 setState() 开头有 `if (state === next) return` 的早退，
+  //    如果初值就是 "idle"，下面首次 setState("idle") 会被直接拦掉，
+  //    background-image 永远不会被设置 —— 桌宠会是全透明的。
+  let state = "";
   let frame = 0;
   let acc = 0;
   let last = performance.now();
@@ -284,6 +307,9 @@
       return;
     }
 
+    // 要动了，先把定位方式从 CSS 切成 JS 坐标
+    ensurePositioned();
+
     const dir = Math.random() < 0.5 ? -1 : 1;
     facing = dir;
     setState("walk");
@@ -333,6 +359,8 @@
   sprite.addEventListener("pointerdown", (e) => {
     dragging = true;
     movedDistance = 0;
+    // 开始拖之前先锁定当前位置（从 CSS 定位切到 JS 坐标）
+    ensurePositioned();
     const r = root.getBoundingClientRect();
     dragOffsetX = e.clientX - r.left;
     dragOffsetY = e.clientY - r.top;

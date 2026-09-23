@@ -112,6 +112,10 @@ nav {
   color: #fff;
   border-radius: 8px;
   transition: all 0.18s cubic-bezier(0.45, 0.05, 0.55, 0.95);
+  /* 参考站的 nav 上挂了 shadow-lg，这里还原成等效的 box-shadow */
+  box-shadow:
+    0 10px 15px -3px rgb(0 0 0 / 0.1),
+    0 4px 6px -4px rgb(0 0 0 / 0.1);
 }
 
 nav a {
@@ -154,8 +158,14 @@ nav a:hover { text-decoration: none; }
 }
 
 .slide-enter-content > * {
-  --delay: 0.2s;
+  /* ⚠️ 参考站原值是 0.2s，但那是给只有五六个子元素的首页用的。
+     我们的文章列表会把几十条一次性塞进来，0.2s × 20 = 4 秒，
+     最后几条要等太久。降到 0.07s，最长约 1.4 秒，错位感仍在。 */
+  --delay: 0.07s;
   --start: 0ms;
+  /* ★ 必须给默认值：超过 nth-child(20) 的元素如果 --stagger 未定义，
+     calc() 会失效，animation-delay 退化成初始值，导致它们反而最先出现。 */
+  --stagger: 0;
   animation: slide-enter 0.6s both 1;
   animation-delay: calc(var(--start) + var(--stagger) * var(--delay));
 }
@@ -179,6 +189,20 @@ nav a:hover { text-decoration: none; }
 .slide-enter-content > *:nth-child(18) { --stagger: 18; }
 .slide-enter-content > *:nth-child(19) { --stagger: 19; }
 .slide-enter-content > *:nth-child(20) { --stagger: 20; }
+
+/* ---------- 尊重「减少动态效果」偏好 ----------
+   这条很重要，之前漏了：
+   上面的动画用了 animation-fill-mode: both，意味着动画开始前元素是 opacity: 0。
+   对开启了系统「减少动态效果」的用户，我们必须直接跳过动画，
+   并且显式把 opacity 置回 1 —— 否则内容有可能一直不出现。 */
+@media (prefers-reduced-motion: reduce) {
+  .slide-enter-content > * {
+    animation: none;
+    opacity: 1;
+    transform: none;
+  }
+  nav { transition: none; }
+}
 
 /* ---------- 文章列表条目 ---------- */
 
