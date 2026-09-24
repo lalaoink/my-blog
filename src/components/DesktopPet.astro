@@ -294,6 +294,31 @@
   let wanderTimer = null;
   let drawCount = 0;
 
+  // ---------- 鼠标跟随（用于"看向鼠标"） ----------
+  const LOOK_DEADZONE = 46; // 死区，px：鼠标在正前方附近时保持朝向不变
+  const LOOK_EASE = 0.08; // 平滑系数，越小越慢
+  let mouseX = 0;
+  let mouseY = 0;
+  let mouseSeen = false;
+  const look = { x: 0, y: 0 };
+
+  window.addEventListener(
+    "pointermove",
+    (e) => {
+      mouseX = e.clientX;
+      mouseY = e.clientY;
+      mouseSeen = true;
+    },
+    { passive: true }
+  );
+  // 光标离开窗口就不再跟随
+  document.addEventListener("mouseleave", () => {
+    mouseSeen = false;
+  });
+  document.addEventListener("mouseenter", () => {
+    mouseSeen = true;
+  });
+
   function setupCanvas() {
     canvas.width = CANVAS_W * dpr;
     canvas.height = CANVAS_H * dpr;
@@ -330,16 +355,90 @@
   /** 画一帧。
    *  ⚠️ SkeletonRenderer 自己【不会清屏】—— clearRect 在 spine-canvas.js 里出现 0 次。
    *     不清的话每帧都叠在上一帧上，看起来就是重影 / 拖尾。 */
-  function drawFrame(dt) {
+  function drawFrame(dt, nowMs) {
     ctx2d.clearRect(0, 0, canvas.width, canvas.height);
     animState.update(dt);
     animState.apply(skeleton);
+
+    // ★ 骨骼级微动作：在动画之上再叠加，做出"活着的 NPC"的感觉。
+    //   Default 动画时长是 0 秒（纯静止姿势），只靠它撑不住生气。
+    applyIdleMotion(skeleton, nowMs);
+    applyLookAt(skeleton);
     // 朝向：向左走时水平翻转整个模型
     skeleton.scaleX = facing * dpr;
     // 坐下等动作会让角色整体下沉，这里提回地面线
     skeleton.y = (ORIGIN_Y + (LIFT[state] || 0)) * dpr;
     skeleton.updateWorldTransform();
     renderer.draw(skeleton);
+  }
+
+  function clampNum(v, a, b) {
+    return Math.min(Math.max(v, a), b);
+  }
+
+  /** 缓慢的呼吸 / 重心摇摆：一直不停，幅度很小 */
+  function applyIdleMotion(sk, nowMs) {
+    const t = nowMs / 1000;
+    // 两个不同频率的正弦叠加，避免看起来像机械钟摆
+    const breathe = Math.sin(t * 2.6); // 呼吸，约 2.4 秒一轮
+    const sway = Math.sin(t * 1.14); // 重心轻摆，约 5.5 秒一轮
+
+    const rootBone = sk.findBone("bone") || sk.findBone("root");
+    const chest = sk.findBone("F_chest");
+    const head = sk.findBone("F_head");
+
+    if (rootBone) rootBone.y += breathe * 1.2;
+    if (chest) chest.rotation += sway * 1.5;
+    if (head) head.rotation += sway * 1.1 + Math.sin(t * 0.83) * 0.8;
+  }
+
+  /** 看向鼠标：转头 + 眼睛偏移 + 眉毛起伏，并据此决定整体朝向 */
+  function applyLookAt(sk) {
+    if (!mouseSeen) return;
+    const r = canvas.getBoundingClientRect();
+    if (!r.width) return;
+
+    const cx = r.left + r.width / 2;
+    const cy = r.top + r.height * 0.32; // 头部大致所在的高度
+    const dx = mouseX - cx;
+    const dy = mouseY - cy;
+
+    // 只在待机/坐下时跟随，走动或拖拽时不要抢朝向
+    if (!dragging && state !== "walk") {
+      // 死区：鼠标在正中间时不来回横跳
+      if (dx < -LOOK_DEADZONE) facing = -1;
+      else if (dx > LOOK_DEADZONE) facing = 1;
+    }
+    // 整体翻转之后，旋转的视觉方向是反的，所以乘 facing
+    const flip = facing;
+
+    const tx = clampNum(dx / 420, -1, 1) * flip;
+    const ty = clampNum(dy / 420, -1, 1);
+
+    // 平滑逼近，避免鼠标一动头就瞬移
+    look.x += (tx - look.x) * LOOK_EASE;
+    look.y += (ty - look.y) * LOOK_EASE;
+
+    const head = sk.findBone("F_head");
+    const chest = sk.findBone("F_chest");
+    if (head) head.rotation += look.x * 13 + look.y * 1.5;
+    if (chest) chest.rotation += look.x * 4;
+
+    // 眼睛：小幅偏移，制造"视线跟着你"的感觉
+    const eyeL = sk.findBone("F_L_eye");
+    const eyeR = sk.findBone("F_R_eye");
+    for (const eye of [eyeL, eyeR]) {
+      if (!eye) continue;
+      eye.x += look.x * 1.6 * flip;
+      eye.y += look.y * 1.2;
+    }
+    // 眉毛：跟着上下轻微起伏，多一点表情
+    const browL = sk.findBone("F_L_eyebrow");
+    const browR = sk.findBone("F_R_eyebrow");
+    for (const b of [browL, browR]) {
+      if (!b) continue;
+      b.y += look.y * 0.8;
+    }
   }
 
   function scheduleWander(delay) {
@@ -365,7 +464,7 @@
         if (state === "idle" && idleFor > 30000) setState("sit");
       }
 
-      drawFrame(dt);
+      drawFrame(dt, now);
 
       drawCount++;
       if (drawCount % 30 === 0) {
@@ -543,7 +642,7 @@
       setState("idle");
 
       // 立即同步画一帧：标签页在后台时 rAF 会被节流，不能只等它
-      drawFrame(0);
+      drawFrame(0, performance.now());
       drawCount = 1;
 
       status("ready,vp=" + window.innerWidth + "x" + window.innerHeight);

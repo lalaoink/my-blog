@@ -33,6 +33,20 @@ jobs:
 
       # 这个脚本只依赖 Node 内置模块（fetch + fs），不需要 npm install，
       # 所以跑得非常快，也不会因为依赖问题失败。
+      # 先检查密钥。缺失时立刻失败并给出明确提示，
+      # 否则脚本会抓到 0 条并把已有数据覆盖掉（已经真实发生过一次）。
+      - name: 检查访问令牌
+        env:
+          BANGUMI_TOKEN: ${{ secrets.BANGUMI_TOKEN }}
+        run: |
+          if [ -z "$BANGUMI_TOKEN" ]; then
+            echo "::error::缺少 BANGUMI_TOKEN 仓库密钥，本次运行中止。"
+            echo "请到 https://github.com/lalaoink/my-blog/settings/secrets/actions"
+            echo "添加一个 Repository secret，名称必须正好是 BANGUMI_TOKEN。"
+            exit 1
+          fi
+          echo "令牌已就位（长度 ${#BANGUMI_TOKEN}）。"
+
       - name: 拉取 Bangumi 收藏
         env:
           BANGUMI_USERNAME: "765864"

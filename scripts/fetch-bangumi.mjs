@@ -16,7 +16,7 @@
 //     3) 静态 JSON 零延迟、零依赖、离线可构建
 // ============================================================
 
-import { writeFile, mkdir } from "node:fs/promises";
+import { writeFile, readFile, mkdir } from "node:fs/promises";
 import { dirname } from "node:path";
 
 // ---------- 配置 ----------
@@ -182,6 +182,31 @@ async function main() {
     ),
     items: all,
   };
+
+  // ★ 防覆盖保护。
+  //   私密收藏在缺少/失效令牌时会被 API 返回 0 条 —— 如果直接写盘，
+  //   就会把上一次的好数据抹成空。GitHub Actions 上已经真实发生过一次。
+  let previousCount = 0;
+  try {
+    const prev = JSON.parse(await readFile(OUT_FILE, "utf8"));
+    previousCount = prev.total ?? 0;
+  } catch {
+    // 文件不存在或损坏，当作 0
+  }
+
+  if (
+    all.length === 0 &&
+    previousCount > 0 &&
+    process.env.BANGUMI_ALLOW_EMPTY !== "1"
+  ) {
+    console.error(
+      `\n✗ 本次抓到 0 条，但现有数据有 ${previousCount} 条 —— 拒绝覆盖。\n` +
+        "  最可能的原因：缺少或失效的 BANGUMI_TOKEN。\n" +
+        "  收藏设为私密时，未认证请求会返回 0 条（而不是报错），所以必须带令牌。\n" +
+        "  确认确实要清空时，设置 BANGUMI_ALLOW_EMPTY=1 再运行。"
+    );
+    process.exit(1);
+  }
 
   await mkdir(dirname(OUT_FILE), { recursive: true });
   await writeFile(OUT_FILE, JSON.stringify(payload, null, 2) + "\n", "utf8");
