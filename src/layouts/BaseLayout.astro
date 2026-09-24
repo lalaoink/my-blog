@@ -33,6 +33,7 @@ const navItems = [
   { href: "/bangumi", label: "追番" },
   { href: "/about", label: "关于" },
   { href: "/rss.xml", label: "RSS" },
+  { href: "/admin/", label: "管理" },
 ];
 ---
 
@@ -112,7 +113,16 @@ const navItems = [
         <code>public/pet-eyja/NOTICE.txt</code>）
       </p>
       <p style="font-size:.85em">
-        <!-- 内容管理入口。需要登录才能用，所以放在公开页脚是安全的 -->
+        <!--
+          登录 / 注册 / 后台入口。
+          /admin/signup.html 会自动读取本站 Identity 设置：
+          若站点已关闭注册（Registration = Invite only），它会隐藏注册按钮，
+          只保留登录。所以这一行在任何配置下都是安全的。
+        -->
+        <a href="/admin/signup.html" rel="nofollow">登录</a>
+        &nbsp;·&nbsp;
+        <a href="/admin/signup.html" rel="nofollow">注册</a>
+        &nbsp;·&nbsp;
         <a href="/admin/" rel="nofollow">内容管理</a>
       </p>
     </footer>

@@ -128,6 +128,30 @@
           window.netlifyIdentity.open("login");
         });
 
+        // 读取本站 Identity 的公开设置，决定是否显示"注册"。
+        // 若站点把 Registration 设为 Invite only，disable_signup 会是 true，
+        // 这时自助注册会失败 —— 直接隐藏按钮，避免用户白点。
+        fetch("/.netlify/identity/settings")
+          .then(function (r) {
+            return r.json();
+          })
+          .then(function (s) {
+            if (s && s.disable_signup) {
+              var b = document.getElementById("btn-signup");
+              if (b) b.style.display = "none";
+              var n = document.querySelector(".note");
+              if (n) {
+                n.innerHTML =
+                  "<b>本站已关闭自助注册。</b><br />" +
+                  "站点管理员在 Netlify 的 Identity 里把 Registration 设成了 " +
+                  "Invite only，所以这里只能登录。需要新账号时，由管理员在后台发出邀请。";
+              }
+            }
+          })
+          .catch(function () {
+            /* 拿不到设置就保持原样，不影响使用 */
+          });
+
         // 登录成功后自动进入后台
         window.netlifyIdentity.on("login", function () {
           refresh();
