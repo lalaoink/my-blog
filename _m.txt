@@ -1,0 +1,31 @@
+feat: 新增 Word (.docx) 导入功能
+
+在浏览器里把 Word 转成 Markdown，不需要任何后端（静态站没有服务器）。
+
+新增 public/admin/word.html：
+- 拖放或点选 .docx
+- mammoth 转 HTML → turndown 转 Markdown（带 GFM 表格/删除线插件）
+- 自动提取标题（优先文档第一个 h1，其次文件名），去掉重复的 h1
+- 可编辑元数据：标题 / 日期 / 标签 / 摘要 / 草稿
+- 双标签页：预览（渲染后的 HTML）+ Markdown 源码（可手改）
+- 一键复制完整 .md（含 frontmatter）/ 下载 .md 文件
+- 图片策略：转成「[图片 N]」占位文字并提示用编辑器插图。
+  不把 base64 塞进 Markdown，否则文档会膨胀到几 MB。
+
+转换库自托管在 public/admin/vendor/（mammoth 619KB / turndown 26KB /
+turndown-plugin-gfm 4KB）。沿用之前的教训：不依赖外部 CDN，
+因为 identity.netlify.com 在用户网络下就加载失败过。
+
+页脚新增「Word 导入」入口。
+
+实测验证：造了一个真实 .docx（一级标题 + 含粗体斜体的段落 +
+二级标题 + 段落），在浏览器里跑完整链路，输出为：
+  # 我的第一篇 Word 文章
+  这是普通段落，里面有**加粗的文字**和*斜体*。
+  ## 小标题
+标题、粗体、斜体、段落分隔全部正确。
+
+另注：造测试文件时踩到一个坑 —— Windows 的
+ZipFile.CreateFromDirectory 生成的反斜杠条目名不符合 OOXML 规范，
+会导致 mammoth 报 "Could not find main document part"。
+真实 Word 文件不会有这个问题。
