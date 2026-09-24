@@ -12,6 +12,8 @@
         --gray: #6a6d6e;
         --sea-blue: #316fd3;
         --sand-yellow: #f3ec86;
+        --green: #1a7f37;
+        --red: #b42318;
       }
       * { box-sizing: border-box; }
       body {
@@ -35,7 +37,22 @@
       }
       h2 { font-size: 1.02em; margin: 0 0 12px; color: var(--very-dark-gray); }
 
-      /* 拖放区 */
+      /* 登录状态条 */
+      #auth {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        flex-wrap: wrap;
+        padding: 12px 16px;
+        border-radius: 10px;
+        border: 2px solid;
+        font-size: 0.92em;
+        margin-bottom: 18px;
+      }
+      #auth.on { border-color: #b7e4c7; background: #f0fff4; color: #14532d; }
+      #auth.off { border-color: #ffe0a3; background: #fffbf0; color: #7a4b00; }
+      #auth .spacer { flex: 1; }
+
       #drop {
         border: 2px dashed var(--gray);
         border-radius: 12px;
@@ -45,18 +62,14 @@
         transition: all 0.15s ease;
         background: #fbfbfa;
       }
-      #drop:hover, #drop.over {
-        border-color: var(--sea-blue);
-        background: #f4f8ff;
-      }
+      #drop:hover, #drop.over { border-color: var(--sea-blue); background: #f4f8ff; }
       #drop .big { font-size: 1.05em; color: var(--very-dark-gray); font-weight: 700; }
       #drop .small { font-size: 0.88em; color: var(--gray); margin-top: 6px; }
 
-      /* 表单 */
       .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
       .full { grid-column: 1 / -1; }
       label { display: block; font-size: 0.85em; color: var(--gray); margin-bottom: 4px; }
-      input[type="text"], input[type="date"], input[type="number"], textarea {
+      input[type="text"], input[type="date"], textarea {
         width: 100%;
         font: inherit;
         font-size: 15px;
@@ -70,6 +83,7 @@
       textarea { resize: vertical; min-height: 62px; }
       .check { display: flex; align-items: center; gap: 8px; font-size: 0.9em; }
       .check input { width: 16px; height: 16px; }
+      .hint { font-size: 0.82em; color: var(--gray); margin-top: 4px; }
 
       button {
         font: inherit;
@@ -85,97 +99,81 @@
       button:hover { background: var(--very-dark-gray); color: #fff; }
       button.primary { background: var(--sea-blue); border-color: var(--sea-blue); color: #fff; }
       button.primary:hover { filter: brightness(1.08); }
+      button.big { font-size: 16px; padding: 12px 26px; }
       button:disabled { opacity: 0.45; cursor: default; }
       button:disabled:hover { background: #fff; color: inherit; }
+      button.primary:disabled:hover { background: var(--sea-blue); color: #fff; }
 
-      /* 标签页 */
       .tabs { display: flex; gap: 6px; margin-bottom: 12px; border-bottom: 2px solid #e6e5e2; }
       .tabs button {
-        border: none;
-        border-radius: 0;
-        margin: 0;
-        padding: 8px 14px;
-        background: transparent;
-        color: var(--gray);
+        border: none; border-radius: 0; margin: 0; padding: 8px 14px;
+        background: transparent; color: var(--gray);
       }
       .tabs button:hover { background: #f0efec; color: var(--very-dark-gray); }
       .tabs button.active {
-        color: var(--very-dark-gray);
-        font-weight: 700;
+        color: var(--very-dark-gray); font-weight: 700;
         box-shadow: inset 0 -3px 0 var(--sea-blue);
       }
       .pane { display: none; }
       .pane.active { display: block; }
 
       #preview {
-        border: 1px solid #e6e5e2;
-        border-radius: 8px;
-        padding: 16px 20px;
-        max-height: 460px;
-        overflow: auto;
-        background: #fff;
+        border: 1px solid #e6e5e2; border-radius: 8px; padding: 16px 20px;
+        max-height: 460px; overflow: auto; background: #fff;
       }
       #preview h1, #preview h2, #preview h3 { color: var(--very-dark-gray); }
       #preview img { max-width: 100%; }
       #preview table { border-collapse: collapse; width: 100%; margin: 10px 0; }
       #preview th, #preview td { border: 1px solid #ddd; padding: 5px 8px; font-size: 0.92em; }
       #preview blockquote {
-        border-left: 3px solid var(--gray);
-        margin: 10px 0;
-        padding: 2px 0 2px 12px;
-        color: var(--very-dark-gray);
-        font-style: italic;
+        border-left: 3px solid var(--gray); margin: 10px 0;
+        padding: 2px 0 2px 12px; color: var(--very-dark-gray); font-style: italic;
       }
       #preview pre {
-        background: #f6f6f4;
-        border: 1px solid #e0dfdb;
-        border-radius: 6px;
-        padding: 10px;
-        overflow-x: auto;
+        background: #f6f6f4; border: 1px solid #e0dfdb;
+        border-radius: 6px; padding: 10px; overflow-x: auto;
       }
 
       #md {
-        width: 100%;
-        min-height: 420px;
+        width: 100%; min-height: 420px;
         font-family: Consolas, Monaco, "Courier New", monospace;
-        font-size: 13px;
-        line-height: 1.6;
-        white-space: pre;
+        font-size: 13px; line-height: 1.6; white-space: pre;
       }
 
       .status { font-size: 0.9em; margin: 10px 0 0; }
-      .status.ok { color: #1a7f37; }
-      .status.err { color: #b42318; }
+      .status.ok { color: var(--green); }
+      .status.err { color: var(--red); }
+      .status.busy { color: var(--sea-blue); }
       .note {
-        padding: 12px 14px;
-        border-left: 3px solid var(--sand-yellow);
-        background: #fffdf2;
-        font-size: 0.88em;
-        color: #5a5a4a;
-        border-radius: 0 6px 6px 0;
-        margin-top: 14px;
+        padding: 12px 14px; border-left: 3px solid var(--sand-yellow);
+        background: #fffdf2; font-size: 0.88em; color: #5a5a4a;
+        border-radius: 0 6px 6px 0; margin-top: 14px;
       }
       .note b { color: var(--very-dark-gray); }
-      ol { padding-left: 1.3em; }
-      ol li { margin: 4px 0; }
       .hide { display: none !important; }
-      @media (max-width: 680px) {
-        .grid { grid-template-columns: 1fr; }
-      }
+      code { background: #f0efec; padding: 1px 5px; border-radius: 4px; font-size: 0.92em; }
+      a { color: var(--sea-blue); }
+      @media (max-width: 680px) { .grid { grid-template-columns: 1fr; } }
     </style>
   </head>
   <body>
     <div class="wrap">
       <p style="margin:0 0 14px;font-size:.9em">
-        <a href="/admin/" style="color:#316fd3;text-decoration:none">← 返回内容管理</a>
+        <a href="/admin/" style="text-decoration:none">← 返回内容管理</a>
         &nbsp;·&nbsp;
-        <a href="/" style="color:#316fd3;text-decoration:none">返回博客主页</a>
+        <a href="/" style="text-decoration:none">返回博客主页</a>
       </p>
       <h1>Word 导入</h1>
       <p class="sub">
-        把 <code>.docx</code> 转成 Markdown。<b>转换全部在你的浏览器里完成</b>，
-        文件不会上传到任何服务器。
+        把 <code>.docx</code> 转成 Markdown。<b>转换全部在你的浏览器里完成</b>，文件不会上传到任何服务器。
       </p>
+
+      <!-- 登录状态 -->
+      <div id="auth" class="off">
+        <span id="auth-text">正在检查登录状态…</span>
+        <span class="spacer"></span>
+        <button id="btn-login" class="hide">登录</button>
+      </div>
 
       <!-- 第 1 步：选文件 -->
       <div class="card">
@@ -187,7 +185,7 @@
         <div class="status" id="status"></div>
       </div>
 
-      <!-- 第 2 步：元数据 + 预览（转换后才显示） -->
+      <!-- 第 2 步：元数据 + 预览 -->
       <div id="result" class="hide">
         <div class="card">
           <h2>文章信息</h2>
@@ -197,10 +195,15 @@
               <input type="text" id="f-title" />
             </div>
             <div>
+              <label>文件名 / 网址</label>
+              <input type="text" id="f-slug" />
+              <div class="hint" id="slug-hint"></div>
+            </div>
+            <div>
               <label>日期</label>
               <input type="date" id="f-date" />
             </div>
-            <div>
+            <div class="full">
               <label>标签（用逗号分隔）</label>
               <input type="text" id="f-tags" placeholder="前端, 教程" />
             </div>
@@ -224,32 +227,33 @@
             <button id="tab-md">Markdown 源码</button>
           </div>
           <div class="pane active" id="pane-preview"><div id="preview"></div></div>
-          <div class="pane" id="pane-md">
-            <textarea id="md" spellcheck="false"></textarea>
-          </div>
+          <div class="pane" id="pane-md"><textarea id="md" spellcheck="false"></textarea></div>
         </div>
 
         <div class="card">
-          <h2>怎么用</h2>
-          <ol>
-            <li>点下面的 <b>复制 Markdown</b>（含文章开头的 frontmatter）</li>
-            <li>打开 <a href="/admin/">内容管理后台</a> → 点 <b>+ 文章</b></li>
-            <li>标题、日期等按上面填的填一遍，
-              <b>然后把复制的内容整段粘进「正文」框</b></li>
-            <li>点 <b>Publish</b>，等一分钟自动上线</li>
-          </ol>
-          <div>
-            <button class="primary" id="btn-copy">复制 Markdown</button>
-            <button id="btn-download">下载 .md 文件</button>
-            <button id="btn-reset">重新选文件</button>
-          </div>
-          <div class="status" id="copy-status"></div>
+          <h2>发布</h2>
+          <button class="primary big" id="btn-publish">🚀 直接发布到博客</button>
+          <button id="btn-copy">复制 Markdown</button>
+          <button id="btn-download">下载 .md</button>
+          <button id="btn-reset">重新选文件</button>
+          <div class="status" id="pub-status"></div>
+
           <div class="note" id="img-note"></div>
+
+          <div class="note">
+            <b>「直接发布」做了什么？</b><br />
+            它用你的登录凭证，把转换结果直接写进 GitHub 仓库的
+            <code>src/content/blog/</code>，然后 Netlify 会自动重新构建 ——
+            <b>大约一分钟</b>后文章就上线了。不需要复制粘贴，也不需要碰 git。<br /><br />
+            <b>如果没登录 / 发布失败</b>，可以用「复制 Markdown」走老流程：
+            打开 <a href="/admin/">内容管理</a> → + 文章 → 粘贴进正文。
+          </div>
         </div>
       </div>
     </div>
 
-    <!-- 自托管，不依赖外部 CDN（见文件顶部说明） -->
+    <!-- 组件在 /admin/ 下，不在 vendor/ 里 —— 路径写错会 404 并导致登录状态卡住 -->
+    <script src="/admin/netlify-identity-widget.js"></script>
     <script src="/admin/vendor/mammoth.browser.min.js"></script>
     <script src="/admin/vendor/turndown.js"></script>
     <script src="/admin/vendor/turndown-plugin-gfm.js"></script>
@@ -259,44 +263,80 @@
         "use strict";
 
         var $ = function (id) { return document.getElementById(id); };
-        var dropEl = $("drop"), fileEl = $("file"), statusEl = $("status");
-        var resultEl = $("result");
 
+        // ---------- 仓库参数 ----------
+        // Git Gateway 的 API 镜像 GitHub 官方 API：/.netlify/git/{provider}/repos/{owner}/{repo}/contents/{path}
+        // 认证用 Netlify Identity 签发的 JWT，所以这里不需要任何密钥。
+        var GATEWAY = "/.netlify/git/github";
+        var REPO = "lalaoink/my-blog";
+        var BRANCH = "main";
+        var CONTENT_DIR = "src/content/blog";
+
+        var dropEl = $("drop"), fileEl = $("file"), statusEl = $("status");
+        var resultEl = $("result"), authEl = $("auth"), authText = $("auth-text");
+        var pubStatus = $("pub-status");
+
+        // ---------- 登录状态 ----------
+        var identityReady = !!(window.netlifyIdentity);
+        if (identityReady) window.netlifyIdentity.init();
+
+        function currentUser() {
+          return identityReady ? window.netlifyIdentity.currentUser() : null;
+        }
+        function renderAuth() {
+          var u = currentUser();
+          if (u) {
+            authEl.className = "on";
+            authText.innerHTML =
+              "✅ 已登录：<b>" + u.email + "</b> —— 可以直接一键发布。";
+            $("btn-login").classList.add("hide");
+          } else {
+            authEl.className = "off";
+            authText.innerHTML = identityReady
+              ? "未登录。登录后可以<b>一键直接发布</b>；不登录也能用下面的复制方式。"
+              : "登录组件未加载（可能网络问题）。复制方式仍然可用。";
+            if (identityReady) $("btn-login").classList.remove("hide");
+          }
+          var btn = $("btn-publish");
+          if (btn) btn.disabled = !u;
+        }
+        // 无论组件是否加载成功都要渲染一次状态，
+        // 否则组件加载失败时状态条会永远停在「正在检查登录状态…」
+        renderAuth();
+        if (identityReady) {
+          window.netlifyIdentity.on("login", function () {
+            renderAuth();
+            window.netlifyIdentity.close();
+          });
+          window.netlifyIdentity.on("logout", renderAuth);
+        }
+        $("btn-login").addEventListener("click", function () {
+          if (identityReady) window.netlifyIdentity.open("login");
+        });
+
+        // ---------- 转换 ----------
         if (!window.mammoth || !window.TurndownService) {
           statusEl.className = "status err";
-          statusEl.textContent =
-            "转换库加载失败（/admin/vendor/ 下的文件没取到）。请刷新重试。";
+          statusEl.textContent = "转换库加载失败（/admin/vendor/ 下的文件没取到）。请刷新重试。";
           return;
         }
-
-        // ---------- Markdown 转换器 ----------
         var td = new window.TurndownService({
-          headingStyle: "atx",      // ## 标题
-          codeBlockStyle: "fenced", // ``` 代码块
-          bulletListMarker: "-",
-          emDelimiter: "*",
-          hr: "---",
+          headingStyle: "atx", codeBlockStyle: "fenced",
+          bulletListMarker: "-", emDelimiter: "*", hr: "---",
         });
-        // 表格 / 删除线 / 任务列表
         if (window.turndownPluginGfm && window.turndownPluginGfm.gfm) {
           td.use(window.turndownPluginGfm.gfm);
         }
 
-        var markdownBody = "";
         var imageCount = 0;
 
-        // ---------- 拖放 ----------
         dropEl.addEventListener("click", function () { fileEl.click(); });
         dropEl.addEventListener("dragover", function (e) {
-          e.preventDefault();
-          dropEl.classList.add("over");
+          e.preventDefault(); dropEl.classList.add("over");
         });
-        dropEl.addEventListener("dragleave", function () {
-          dropEl.classList.remove("over");
-        });
+        dropEl.addEventListener("dragleave", function () { dropEl.classList.remove("over"); });
         dropEl.addEventListener("drop", function (e) {
-          e.preventDefault();
-          dropEl.classList.remove("over");
+          e.preventDefault(); dropEl.classList.remove("over");
           if (e.dataTransfer.files.length) handleFile(e.dataTransfer.files[0]);
         });
         fileEl.addEventListener("change", function () {
@@ -307,65 +347,57 @@
           statusEl.className = "status" + (kind ? " " + kind : "");
           statusEl.textContent = msg || "";
         }
+        function setPub(msg, kind) {
+          pubStatus.className = "status" + (kind ? " " + kind : "");
+          pubStatus.textContent = msg || "";
+        }
 
-        // ---------- 主流程 ----------
         function handleFile(file) {
           if (!/\.docx$/i.test(file.name)) {
-            setStatus(
-              "只支持 .docx（Word 2007 之后的新格式）。" +
-                "如果你的是旧版 .doc，请先用 Word 另存为 .docx。",
-              "err"
-            );
+            setStatus("只支持 .docx（Word 2007 之后的新格式）。旧版 .doc 请先用 Word 另存为 .docx。", "err");
             return;
           }
-          setStatus("正在转换「" + file.name + "」…", "");
-
+          setStatus("正在转换「" + file.name + "」…");
           var reader = new FileReader();
           reader.onload = function () {
-            // 图片先占位，避免把 base64 塞进 Markdown 把文件撑爆
             imageCount = 0;
             window.mammoth
               .convertToHtml(
                 { arrayBuffer: reader.result },
-                {
-                  convertImage: window.mammoth.images.imgElement(function () {
-                    imageCount++;
-                    return { src: "" };
-                  }),
-                }
+                { convertImage: window.mammoth.images.imgElement(function () {
+                    imageCount++; return { src: "" };
+                  }) }
               )
               .then(function (res) {
                 var html = res.value || "";
                 var n = 0;
                 html = html.replace(/<img[^>]*>/g, function () {
-                  n++;
-                  return "<p>［图片 " + n + "：请在上传后用编辑器插入］</p>";
+                  n++; return "<p>［图片 " + n + "：请在上传后用编辑器插入］</p>";
                 });
 
-                markdownBody = td.turndown(html);
+                var md = td.turndown(html);
 
-                // 标题：优先用文档里第一个 h1，其次用文件名
                 var h1 = /<h1[^>]*>([\s\S]*?)<\/h1>/i.exec(res.value || "");
                 var title = h1
                   ? h1[1].replace(/<[^>]+>/g, "").trim()
                   : file.name.replace(/\.docx$/i, "");
-                if (h1) {
-                  // h1 已经当标题了，从正文里去掉它，避免重复
-                  markdownBody = markdownBody.replace(/^#\s+.*(\r?\n)+/, "");
-                }
+                if (h1) md = md.replace(/^#\s+.*(\r?\n)+/, "");
 
                 $("f-title").value = title;
+                $("f-slug").value = makeSlug(title);
                 $("f-date").value = todayStr();
                 $("f-tags").value = "";
                 $("f-desc").value = "";
                 $("f-draft").checked = false;
 
                 $("preview").innerHTML = html;
-                $("md").value = markdownBody;
+                $("md").value = md;
+                updateSlugHint();
 
                 resultEl.classList.remove("hide");
+                setPub("");
                 setStatus(
-                  "转换完成：正文约 " + markdownBody.length + " 个字符。" +
+                  "转换完成：正文约 " + md.length + " 个字符。" +
                     (n ? "文档里有 " + n + " 张图片，已替换成占位文字。" : ""),
                   "ok"
                 );
@@ -382,75 +414,181 @@
 
         function renderImgNote(n) {
           var el = $("img-note");
-          if (!n) {
-            el.innerHTML = "<b>没有检测到图片。</b>";
-            return;
-          }
+          if (!n) { el.innerHTML = "<b>没有检测到图片。</b>"; return; }
           el.innerHTML =
             "<b>这篇文档里有 " + n + " 张图片，已被替换成「［图片 N］」占位文字。</b><br />" +
-            "Word 里的图片无法可靠地转成 Markdown，建议：在后台编辑器里，" +
-            "把光标放到占位文字处删除它，然后用工具栏的图片按钮上传原图。<br />" +
-            "（如果确实想把图片直接塞进 Markdown，会把文件撑到几 MB，" +
-            "影响加载速度，所以默认没这么做。）";
+            "Word 里的图片无法可靠地转成 Markdown。建议发布后到内容管理里，把占位文字删掉，用工具栏的图片按钮上传原图。";
         }
 
         function todayStr() {
           var d = new Date();
-          var m = String(d.getMonth() + 1).padStart(2, "0");
-          var day = String(d.getDate()).padStart(2, "0");
-          return d.getFullYear() + "-" + m + "-" + day;
+          return d.getFullYear() + "-" +
+            String(d.getMonth() + 1).padStart(2, "0") + "-" +
+            String(d.getDate()).padStart(2, "0");
         }
 
-        // ---------- 组装带 frontmatter 的完整 .md ----------
-        function buildFile() {
+        // 生成 URL 友好的文件名：去掉文件系统和 URL 里的敏感字符
+        function makeSlug(title) {
+          var s = (title || "").trim()
+            .replace(/[\\/:*?"<>|#%{}^\[\]`;'@&=+$,\s]+/g, "-")
+            .replace(/-+/g, "-")
+            .replace(/^-|-$/g, "")
+            .slice(0, 60);
+          return s || "untitled";
+        }
+
+        function updateSlugHint() {
+          var s = $("f-slug").value.trim() || "untitled";
+          $("slug-hint").innerHTML =
+            "文章网址将是 <code>/posts/" + s + "</code>";
+        }
+
+        // ---------- 组装带 frontmatter 的 .md ----------
+        function buildMeta() {
           var title = $("f-title").value.trim() || "未命名";
+          var slug = makeSlug($("f-slug").value.trim() || title);
           var date = $("f-date").value || todayStr();
           var desc = $("f-desc").value.trim();
-          var tags = $("f-tags").value
-            .split(/[,，]/)
-            .map(function (s) { return s.trim(); })
-            .filter(Boolean);
+          var tags = $("f-tags").value.split(/[,，]/)
+            .map(function (s) { return s.trim(); }).filter(Boolean);
           var draft = $("f-draft").checked;
 
           var lines = ["---"];
           lines.push("title: " + yamlStr(title));
           lines.push("date: " + date);
           if (desc) lines.push("description: " + yamlStr(desc));
-          lines.push(
-            "tags: [" + tags.map(function (t) { return yamlStr(t); }).join(", ") + "]"
-          );
+          lines.push("tags: [" + tags.map(yamlStr).join(", ") + "]");
           lines.push("draft: " + (draft ? "true" : "false"));
           lines.push("---");
           lines.push("");
           var body = $("md").value.replace(/^\s+/, "");
-          return lines.join("\n") + body + "\n";
+          return { slug: slug, title: title, text: lines.join("\n") + body + "\n" };
         }
 
-        // YAML 字符串安全转义：有特殊字符就加引号
         function yamlStr(s) {
           if (/^[\w\u4e00-\u9fa5][\w\u4e00-\u9fa5 \-]*$/.test(s)) return s;
           return '"' + s.replace(/\\/g, "\\\\").replace(/"/g, '\\"') + '"';
         }
 
-        // ---------- 按钮 ----------
-        $("btn-copy").addEventListener("click", function () {
-          var text = buildFile();
-          var cs = $("copy-status");
-          var done = function () {
-            cs.className = "status ok";
-            cs.textContent = "已复制。去 内容管理后台 → + 文章，把内容粘进「正文」。";
-          };
-          if (navigator.clipboard && navigator.clipboard.writeText) {
-            navigator.clipboard.writeText(text).then(done).catch(function () {
-              fallbackCopy(text, cs);
-            });
-          } else {
-            fallbackCopy(text, cs);
+        // UTF-8 安全的 base64（GitHub API 要求）
+        function b64(str) {
+          return btoa(unescape(encodeURIComponent(str)));
+        }
+
+        // ---------- 一键发布 ----------
+        async function getToken() {
+          var u = currentUser();
+          if (!u) throw new Error("尚未登录");
+          // Netlify Identity 的 jwt() 返回 Promise
+          if (typeof u.jwt === "function") return await u.jwt();
+          if (u.token && u.token.access_token) return u.token.access_token;
+          throw new Error("拿不到访问令牌，请重新登录");
+        }
+
+        $("btn-publish").addEventListener("click", async function () {
+          var btn = $("btn-publish");
+          btn.disabled = true;
+          var oldLabel = btn.textContent;
+          btn.textContent = "正在发布…";
+          setPub("正在写入仓库…", "busy");
+
+          try {
+            var meta = buildMeta();
+            var token = await getToken();
+            var path = CONTENT_DIR + "/" + meta.slug + ".md";
+            var headers = { Authorization: "Bearer " + token };
+
+            // 先查是否已存在 —— 存在的话必须带 sha 才能更新
+            var sha = null;
+            var getRes = await fetch(
+              GATEWAY + "/repos/" + REPO + "/contents/" + path + "?ref=" + BRANCH,
+              { headers: headers }
+            );
+            if (getRes.ok) {
+              var existing = await getRes.json();
+              sha = existing.sha || null;
+              if (!confirm(
+                "已经存在同名文章：\n" + path +
+                "\n\n继续会【覆盖】它。确定吗？\n\n（点「取消」可以改上面的文件名再试）"
+              )) {
+                setPub("已取消，没有覆盖任何文件。", "");
+                return;
+              }
+            }
+
+            var body = {
+              message: (sha ? "更新文章：" : "新增文章：") + meta.title,
+              content: b64(meta.text),
+              branch: BRANCH,
+            };
+            if (sha) body.sha = sha;
+
+            var putRes = await fetch(
+              GATEWAY + "/repos/" + REPO + "/contents/" + path,
+              {
+                method: "PUT",
+                headers: Object.assign({ "Content-Type": "application/json" }, headers),
+                body: JSON.stringify(body),
+              }
+            );
+            var putJson = await putRes.json().catch(function () { return {}; });
+
+            if (!putRes.ok) {
+              throw new Error(
+                (putJson && (putJson.message || putJson.msg)) ||
+                  ("HTTP " + putRes.status)
+              );
+            }
+
+            setPub(
+              "🎉 发布成功！文章已写入仓库：" + path +
+                "\nNetlify 正在重新构建，约 1 分钟后访问 /posts/" + meta.slug + " 即可看到。" +
+                "（本页面下方也给了文章链接）",
+              "ok"
+            );
+            // 给一个可点的链接
+            pubStatus.innerHTML =
+              "🎉 <b>发布成功！</b>已写入 <code>" + path + "</code><br />" +
+              "Netlify 正在重新构建，约 <b>1 分钟</b>后可访问：<br />" +
+              '<a href="/posts/' + meta.slug + '/" target="_blank" rel="noopener">' +
+              "/posts/" + meta.slug + "/</a><br /><br />" +
+              '也可以去 <a href="/admin/">内容管理</a> 里继续编辑这篇。';
+          } catch (err) {
+            var msg = err && err.message ? err.message : String(err);
+            if (/401|403|permission|token/i.test(msg)) {
+              setPub(
+                "发布失败：" + msg +
+                  "\n\n看起来是登录状态的问题。点上方「登录」重新登录后再试；" +
+                  "或者直接用下面的「复制 Markdown」走老流程。",
+                "err"
+              );
+            } else {
+              setPub(
+                "发布失败：" + msg +
+                  "\n\n可以改用「复制 Markdown」走老流程（打开内容管理 → + 文章 → 粘贴）。",
+                "err"
+              );
+            }
+          } finally {
+            btn.disabled = !currentUser();
+            btn.textContent = oldLabel;
           }
         });
 
-        function fallbackCopy(text, cs) {
-          // 老浏览器 / 非 HTTPS 环境下的兜底
+        // ---------- 兜底：复制 / 下载 ----------
+        $("btn-copy").addEventListener("click", function () {
+          var text = buildMeta().text;
+          var done = function () {
+            setPub("已复制。去 内容管理 → + 文章，把内容粘进「正文」。", "ok");
+          };
+          if (navigator.clipboard && navigator.clipboard.writeText) {
+            navigator.clipboard.writeText(text).then(done).catch(function () {
+              fallbackCopy(text);
+            });
+          } else { fallbackCopy(text); }
+        });
+
+        function fallbackCopy(text) {
           var ta = document.createElement("textarea");
           ta.value = text;
           ta.style.position = "fixed";
@@ -459,20 +597,19 @@
           ta.select();
           try {
             document.execCommand("copy");
-            cs.className = "status ok";
-            cs.textContent = "已复制。";
+            setPub("已复制。", "ok");
           } catch (e) {
-            cs.className = "status err";
-            cs.textContent = "复制失败，请切到「Markdown 源码」标签手动全选复制。";
+            setPub("复制失败，请切到「Markdown 源码」标签手动全选复制。", "err");
           }
           document.body.removeChild(ta);
         }
 
         $("btn-download").addEventListener("click", function () {
-          var blob = new Blob([buildFile()], { type: "text/markdown;charset=utf-8" });
+          var meta = buildMeta();
+          var blob = new Blob([meta.text], { type: "text/markdown;charset=utf-8" });
           var a = document.createElement("a");
           a.href = URL.createObjectURL(blob);
-          a.download = ($("f-title").value.trim() || "article") + ".md";
+          a.download = meta.slug + ".md";
           document.body.appendChild(a);
           a.click();
           document.body.removeChild(a);
@@ -482,11 +619,11 @@
         $("btn-reset").addEventListener("click", function () {
           resultEl.classList.add("hide");
           fileEl.value = "";
-          setStatus("");
+          setStatus(""); setPub("");
           window.scrollTo({ top: 0, behavior: "smooth" });
         });
 
-        // 标签页切换
+        // ---------- 标签页 ----------
         $("tab-preview").addEventListener("click", function () { switchTab("preview"); });
         $("tab-md").addEventListener("click", function () { switchTab("md"); });
         function switchTab(which) {
@@ -496,14 +633,17 @@
           $("pane-md").classList.toggle("active", which === "md");
         }
 
-        // Markdown 源码改动 → 同步回内部状态
-        $("md").addEventListener("input", function () {
-          markdownBody = $("md").value;
-        });
-
-        // 标题改动 → 更新下载文件名（无副作用，仅提示）
         $("f-title").addEventListener("input", function () {
-          document.title = ($("f-title").value || "Word 导入") + " · Word 导入";
+          // 标题改动时，如果用户没手动改过文件名，就自动跟着变
+          if (!$("f-slug").dataset.touched) {
+            $("f-slug").value = makeSlug($("f-title").value);
+            updateSlugHint();
+          }
+        });
+        $("f-slug").addEventListener("input", function () {
+          // 一旦手动改过，就不再被标题覆盖
+          $("f-slug").dataset.touched = "1";
+          updateSlugHint();
         });
       })();
     </script>

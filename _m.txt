@@ -1,0 +1,31 @@
+feat: Word 导入支持「一键直接发布」，不再需要复制粘贴
+
+用户提议：为什么不导入后直接变成最终文章？这个方向是对的 ——
+之前之所以只能复制粘贴，是因为转换页是纯静态页面、没有写仓库的权限。
+
+但转换页其实能拿到和 Decap 相同的凭证。反查 decap-cms.js 后确认：
+  gatewayUrl = /.netlify/git         apiUrl = /.netlify/identity
+  apiRoot    = /.netlify/git/github  （镜像 GitHub 官方 API）
+实测路由探活：不带 token 请求
+  /.netlify/git/github/repos/{owner}/{repo}/contents/{path}
+返回 401「This endpoint requires a Bearer token」，说明路由存在。
+
+实现：
+- 页面加载自托管 Identity 组件，显示登录状态（未登录也可用老流程）
+- 新增「文件名 / 网址」字段，自动由标题生成、可改，实时显示最终网址
+- 「🚀 直接发布到博客」按钮：
+  · 取 Identity 的 JWT
+  · GET 目标路径判断是否已存在；存在则带 sha 更新，并弹确认框防误覆盖
+  · PUT 写入 src/content/blog/{slug}.md（base64 + UTF-8 安全编码）
+  · 成功后给出文章链接，并提示 Netlify 约 1 分钟构建完成
+- 失败时按错误类型给出针对性提示，并引导改用复制流程
+
+同时修两处自己的 bug：
+- Identity 组件路径写成 /admin/vendor/ 实际在 /admin/，导致 404 且
+  登录状态条永远停在「正在检查登录状态…」；现在无论组件是否加载
+  都会渲染一次状态
+- check-links.mjs 被 JS 里动态拼接的伪链接（"/posts/" + slug + "/"）骗到，
+  现在会跳过含引号/加号/空格的这类字符串
+
+实测：页面无控制台错误，登录状态条正确渲染为「未登录」，
+组件与转换库路径均可达，链接检查 0 坏链。

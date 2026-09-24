@@ -81,6 +81,9 @@ async function main() {
       if (!raw.startsWith("/") || raw.startsWith("//")) continue;
       // 跳过协议链接和纯锚点
       if (raw.startsWith("/#")) continue;
+      // 跳过 JS 里动态拼接出来的伪链接，
+      // 例如 pubStatus.innerHTML 里的 "/posts/" + slug + "/"
+      if (/['"+\s<>{}$`]/.test(raw)) continue;
 
       checked++;
       const ok = await resolveToFile(raw);
