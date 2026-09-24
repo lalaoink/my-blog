@@ -24,21 +24,23 @@
   [headers.values]
     Cache-Control = "public, max-age=604800"
 
-# ★ 后台的第三方库长期缓存。
-#
-# 这是「每次进后台都要卡一下」的根治办法：
-# 之前 Decap 主体（约 5 MB）走外部 CDN，实测冷缓存要 15.6 秒；
-# 而且 Netlify 默认不给静态资源发长期缓存头，导致每次访问都重新下载。
-#
-# 现在改成自托管 + 一年强缓存：只有第一次需要下载，之后浏览器直接用缓存。
-# 升级这些库时记得改文件名（或在文件名后加版本号），否则浏览器不会更新。
-[[headers]]
-  for = "/admin/vendor/*"
-  [headers.values]
-    Cache-Control = "public, max-age=31536000, immutable"
+# ⚠️ 规则顺序很重要：Netlify 对同时匹配的多条规则，**后面的覆盖前面的**。
+#    所以"更具体的路径"必须写在后面，否则会被宽泛规则吃掉。
+#    之前 /admin/vendor/* 写在 /admin/* 前面，结果被 no-cache 覆盖，
+#    导致那个 4.93 MB 的 Decap 每次进后台都要重新下载（实测 13.4 秒）。
 
 # 后台页面本身不要缓存，否则改了入口后用户看到的还是旧版
 [[headers]]
   for = "/admin/*"
   [headers.values]
     Cache-Control = "public, max-age=0, must-revalidate"
+
+# ★ 后台的第三方库长期强缓存 —— 必须放在 /admin/* 之后才会生效。
+#
+# 这是「每次进后台都要卡一下」的根治办法：Decap 主体约 5 MB，
+# 一年强缓存后只有第一次需要下载，之后浏览器直接用缓存。
+# 升级这些库时记得改文件名（或加版本号），否则浏览器不会更新。
+[[headers]]
+  for = "/admin/vendor/*"
+  [headers.values]
+    Cache-Control = "public, max-age=31536000, immutable"
