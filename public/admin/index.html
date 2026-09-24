@@ -6,19 +6,54 @@
     <!-- 管理后台不该被搜索引擎收录 -->
     <meta name="robots" content="noindex, nofollow" />
     <title>内容管理 · 言与叶之庭</title>
+
+    <!--
+      ★ 预加载：让浏览器一解析到 <head> 就开始下载 Decap 主体，
+        而不是等解析到 <script> 才开始。省掉几百毫秒的等待。
+    -->
+    <link rel="preload" as="script" href="/admin/vendor/decap-cms.js" />
+
     <style>
+      /* 首屏骨架：Decap（约 5 MB）下载+解析期间先显示这个，
+         避免白屏，也让"正在加载"这件事有反馈 */
+      #boot {
+        position: fixed;
+        inset: 0;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: 14px;
+        background: #f7f7f5;
+        color: #6a6d6e;
+        font-family: "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei",
+          "WenQuanYi Micro Hei", sans-serif;
+        font-size: 14px;
+        z-index: 10;
+        transition: opacity 0.25s ease;
+      }
+      #boot.done { opacity: 0; pointer-events: none; }
+      #boot .ring {
+        width: 26px;
+        height: 26px;
+        border: 3px solid #dcdcd6;
+        border-top-color: #316fd3;
+        border-radius: 50%;
+        animation: spin 0.8s linear infinite;
+      }
+      @keyframes spin { to { transform: rotate(360deg); } }
+
       /*
-        后台右下角的悬浮工具条。
+        右下角悬浮工具条。
         做成固定悬浮层，而不是注入 Decap 的 DOM ——
         Decap 是 React 应用，界面结构会随版本变化，
         直接塞进去很容易在升级后失效；悬浮层则一直有效。
-        位置选右下角，避开它的顶栏（快速新建 / 头像）和左侧集合列表。
       */
       #admin-tools {
         position: fixed;
         right: 20px;
         bottom: 20px;
-        z-index: 2147483000; /* 高于 Decap 的所有浮层 */
+        z-index: 2147483000;
         display: flex;
         flex-direction: column;
         align-items: flex-end;
@@ -43,52 +78,65 @@
         transition: all 0.15s ease;
         white-space: nowrap;
       }
-      #admin-tools a:hover {
-        transform: translateY(-2px);
-        box-shadow: 0 10px 22px rgba(0, 0, 0, 0.2);
-      }
-      #admin-tools a:active {
-        transform: translateY(0);
-      }
-      /* Word 导入是主动作，用主色突出 */
-      #admin-tools a.primary {
-        background: #316fd3;
-        border-color: #316fd3;
-        color: #fff;
-      }
-      #admin-tools a.primary:hover {
-        background: #2655b9;
-        border-color: #2655b9;
-        box-shadow: 0 10px 22px rgba(49, 111, 211, 0.4);
-      }
-      #admin-tools a.ghost:hover {
-        background: #222;
-        color: #fff;
-      }
-      /* 小屏上缩小，别挡内容 */
+      #admin-tools a:hover { transform: translateY(-2px); }
+      #admin-tools a.primary { background: #316fd3; border-color: #316fd3; color: #fff; }
+      #admin-tools a.primary:hover { background: #2655b9; border-color: #2655b9; }
+      #admin-tools a.ghost:hover { background: #222; color: #fff; }
+
       @media (max-width: 600px) {
-        #admin-tools {
-          right: 12px;
-          bottom: 12px;
-          gap: 8px;
-        }
-        #admin-tools a {
-          padding: 8px 12px;
-          font-size: 13px;
-        }
+        #admin-tools { right: 12px; bottom: 12px; gap: 8px; }
+        #admin-tools a { padding: 8px 12px; font-size: 13px; }
       }
     </style>
   </head>
   <body>
-    <!--
-      ⚠️ 必须用 Decap CMS，不能改成 Sveltia CMS。
-      Sveltia 只支持 github / gitlab / gitea / test-repo 四种后端，
-      明确不支持下面的 git-gateway，用它会直接报配置错误。
-      Decap 是 Git Gateway 的原生支持者。
-    -->
-    <script src="https://cdn.jsdelivr.net/npm/decap-cms@^3.0.0/dist/decap-cms.js"></script>
+    <!-- 加载指示，Decap 就绪后移除 -->
+    <div id="boot"><div class="ring"></div><div>正在加载内容管理…</div></div>
 
-    <!-- 悬浮工具条：放在 Decap 脚本之后，确保渲染在最上层 -->
+    <!--
+      ★★★ 这里必须用自托管的 Decap，不要改回 CDN ★★★
+
+      实测：从 cdn.jsdelivr.net 冷缓存拉这个文件要 15.6 秒，
+      从本站自己的 Netlify 只要 1 秒出头。用户的网络访问外部 CDN 不稳定。
+
+      同时 netlify.toml 给 /admin/vendor/* 加了长期缓存头，
+      所以只有第一次访问需要下载，之后浏览器直接用缓存 —— 秒开。
+    -->
+    <script src="/admin/vendor/decap-cms.js"></script>
+
+    <!--
+      兜底：万一本地文件没取到（例如刚部署完 CDN 还没同步），
+      再回退到外部 CDN。正常情况下这段不会执行。
+    -->
+    <script>
+      if (!window.CMS) {
+        document.write(
+          '<script src="https://cdn.jsdelivr.net/npm/decap-cms@^3.0.0/dist/decap-cms.js"><\/script>'
+        );
+      }
+    </script>
+
+    <script>
+      // Decap 挂载完成后淡出加载指示
+      (function () {
+        var boot = document.getElementById("boot");
+        var tries = 0;
+        var timer = setInterval(function () {
+          tries++;
+          // 出现登录表单或主界面就说明已经渲染出来了
+          var ready =
+            document.querySelector("#nc-root") ||
+            document.querySelector("form") ||
+            document.body.children.length > 2;
+          if (ready || tries > 100) {
+            clearInterval(timer);
+            boot.classList.add("done");
+            setTimeout(function () { boot.remove(); }, 400);
+          }
+        }, 60);
+      })();
+    </script>
+
     <div id="admin-tools">
       <a
         class="primary"
