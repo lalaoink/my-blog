@@ -116,6 +116,56 @@
       }
     </script>
 
+    <!--
+      注册 Markdown 编辑器工具栏上的「Word 导入」按钮。
+      用的是 Decap 官方扩展点 CMS.registerEditorComponent。
+
+      ⚠️ 注意它到底能做什么：
+      官方 API 的编辑器组件只能"往正文里插入内容"，
+      不支持"点击后打开一个外部页面"。所以这个按钮不能直接跳到
+      /admin/word 转换页 —— 那是浏览器的限制，不是配置问题。
+
+      它实际的作用是：在编辑器里提供一个**粘贴入口**，
+      让你不用离开文章就能把转换好的 Markdown 插进正文，
+      同时在提示里告诉你转换页的地址。
+
+      这段必须放在 Decap 脚本之后、DOMContentLoaded 之前执行，
+      这样组件才会在 Decap 初始化前注册好。当前位置即满足。
+    -->
+    <script>
+      (function () {
+        if (!window.CMS || !window.CMS.registerEditorComponent) return;
+
+        window.CMS.registerEditorComponent({
+          id: "word-import",
+          label: "📄 Word 导入",
+          // pattern / fromBlock 用于识别已有的块；这里插入的是纯 Markdown，
+          // 所以不需要包裹标记，识别不到也无所谓。
+          pattern: /^{{word-import}}([\s\S]*?){{\/word-import}}$/,
+          fromBlock: function (match) {
+            return { text: (match[1] || "").trim() };
+          },
+          // 关键：返回纯 Markdown，直接落进正文，不留下任何短代码包裹
+          toBlock: function (obj) {
+            return (obj.text || "").trim();
+          },
+          toPreview: function (obj) {
+            return obj.text || "";
+          },
+          fields: [
+            {
+              name: "text",
+              label: "粘贴 Markdown",
+              widget: "text",
+              hint:
+                "转换步骤：新开一个标签页打开  /admin/word  →  拖入 .docx  →  " +
+                "点「复制 Markdown」→ 回到这里粘贴 → 点插入。",
+            },
+          ],
+        });
+      })();
+    </script>
+
     <script>
       // Decap 挂载完成后淡出加载指示
       (function () {
@@ -123,7 +173,6 @@
         var tries = 0;
         var timer = setInterval(function () {
           tries++;
-          // 出现登录表单或主界面就说明已经渲染出来了
           var ready =
             document.querySelector("#nc-root") ||
             document.querySelector("form") ||

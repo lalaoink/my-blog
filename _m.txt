@@ -1,0 +1,18 @@
+feat(cms): Markdown 编辑器工具栏注册「Word 导入」入口
+
+用 Decap 官方扩展点 CMS.registerEditorComponent（用户选择方案 B）。
+
+如实说明其能力边界：
+官方 API 的编辑器组件只能「往正文里插入内容」，不支持「点击后打开
+外部页面」。所以这个按钮无法直接跳转到 /admin/word 转换页 ——
+这是 API 限制，不是配置问题。
+
+它实际提供的是编辑器内的粘贴入口：点工具栏「📄 Word 导入」弹窗，
+把转换好的 Markdown 粘进去，toBlock 返回纯 Markdown 直接落进正文，
+不留下任何短代码包裹。hint 里写清转换步骤与地址。
+
+注册脚本紧跟 Decap 脚本、位于 DOMContentLoaded 之前，
+确保组件在 Decap 初始化前注册完成。
+
+右下角悬浮按钮继续保留 —— 它才是真正能跳到转换页的入口。
+实测：页面无控制台错误，加载骨架正常移除，Decap 正常挂载。
