@@ -89,8 +89,14 @@
       </div>
     </div>
 
-    <!-- Netlify Identity 官方组件：提供完整的登录 / 注册弹窗 -->
-    <script src="https://identity.netlify.com/v1/netlify-identity-widget.js"></script>
+    <!--
+      ⚠️ 这个文件是【自托管】的，不要改回 identity.netlify.com。
+      因为 identity.netlify.com 在原作者的代理环境下连不通，
+      浏览器加载不到组件，注册/重置密码窗口就弹不出来。
+      放在同源目录下就没有这个问题。
+      文件来源：https://identity.netlify.com/v1/netlify-identity-widget.js
+    -->
+    <script src="/admin/netlify-identity-widget.js"></script>
     <script>
       (function () {
         if (!window.netlifyIdentity) {
