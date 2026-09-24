@@ -1,0 +1,132 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="robots" content="noindex, nofollow" />
+    <title>注册账号 · 内容管理</title>
+    <style>
+      :root {
+        --dark-gray: #444;
+        --very-dark-gray: #222;
+        --sea-blue: #316fd3;
+      }
+      * { box-sizing: border-box; }
+      body {
+        margin: 0;
+        min-height: 100vh;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: #f7f7f5;
+        color: var(--dark-gray);
+        font-family: "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei",
+          "WenQuanYi Micro Hei", sans-serif;
+        line-height: 1.7;
+      }
+      .card {
+        background: #fff;
+        border: 2px solid var(--very-dark-gray);
+        border-radius: 12px;
+        padding: 32px;
+        max-width: 520px;
+        width: calc(100% - 40px);
+      }
+      h1 { margin: 0 0 4px; font-size: 1.35em; color: var(--very-dark-gray); }
+      .sub { margin: 0 0 22px; color: #6a6d6e; font-size: 0.92em; }
+      button {
+        font: inherit;
+        font-size: 15px;
+        padding: 10px 20px;
+        border: 2px solid var(--very-dark-gray);
+        border-radius: 8px;
+        background: #fff;
+        cursor: pointer;
+        margin: 0 10px 10px 0;
+        transition: all 0.15s ease;
+      }
+      button:hover { background: var(--very-dark-gray); color: #fff; }
+      button.primary { background: var(--sea-blue); border-color: var(--sea-blue); color: #fff; }
+      button.primary:hover { filter: brightness(1.1); }
+      .note {
+        margin-top: 22px;
+        padding: 12px 14px;
+        border-left: 3px solid #f3ec86;
+        background: #fffdf2;
+        font-size: 0.88em;
+        color: #5a5a4a;
+      }
+      .note b { color: var(--very-dark-gray); }
+      code {
+        background: #f0efec;
+        padding: 1px 5px;
+        border-radius: 4px;
+        font-size: 0.92em;
+      }
+      #who { margin-top: 16px; font-size: 0.9em; color: var(--sea-blue); }
+      a { color: var(--sea-blue); }
+    </style>
+  </head>
+  <body>
+    <div class="card">
+      <h1>内容管理 · 账号</h1>
+      <p class="sub">
+        Decap CMS 自带的登录页只有「登录」按钮，没有注册入口，
+        所以单独做了这一页用来创建账号。
+      </p>
+
+      <button class="primary" id="btn-signup">注册新账号（Sign up）</button>
+      <button id="btn-login">已有账号，去登录</button>
+
+      <div id="who"></div>
+
+      <div class="note">
+        <b>如果注册后提示「请确认邮箱」，但邮件收不到：</b><br />
+        说明该站点的 Identity 开启了邮箱确认（<code>autoconfirm: false</code>）。
+        可以去 Netlify 后台 → <b>Identity → Registration</b>，
+        把 <b>Autoconfirm</b>（自动确认）打开，就能跳过邮件直接登录。<br /><br />
+        注册成功后，回到 <a href="/admin/">/admin/</a> 用刚才的邮箱密码登录即可。
+      </div>
+    </div>
+
+    <!-- Netlify Identity 官方组件：提供完整的登录 / 注册弹窗 -->
+    <script src="https://identity.netlify.com/v1/netlify-identity-widget.js"></script>
+    <script>
+      (function () {
+        if (!window.netlifyIdentity) {
+          document.getElementById("who").textContent =
+            "Identity 组件加载失败，请检查网络后刷新。";
+          return;
+        }
+
+        // 初始化（不要传 API 地址，默认就是本站的 /.netlify/identity）
+        window.netlifyIdentity.init();
+
+        var who = document.getElementById("who");
+
+        function refresh() {
+          var u = window.netlifyIdentity.currentUser();
+          if (u) {
+            who.textContent = "当前已登录：" + u.email + " —— 正在跳转到后台…";
+            setTimeout(function () {
+              location.href = "/admin/";
+            }, 800);
+          }
+        }
+        refresh();
+
+        document.getElementById("btn-signup").addEventListener("click", function () {
+          window.netlifyIdentity.open("signup");
+        });
+        document.getElementById("btn-login").addEventListener("click", function () {
+          window.netlifyIdentity.open("login");
+        });
+
+        // 登录成功后自动进入后台
+        window.netlifyIdentity.on("login", function () {
+          refresh();
+        });
+      })();
+    </script>
+  </body>
+</html>
