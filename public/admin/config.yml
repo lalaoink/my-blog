@@ -4,6 +4,11 @@
 #  这个文件决定「后台长什么样、能改哪些文件」。
 #  界面在 /admin/ ，由 public/admin/index.html 加载。
 #
+#  ⚠️ 必须搭配 Decap CMS，不能用 Sveltia CMS。
+#     Sveltia 只支持 github / gitlab / gitea / test-repo 四种后端，
+#     明确不支持下面的 git-gateway，用它会直接报配置错误。
+#     Decap 是 Git Gateway 的原生支持者。
+#
 #  ⚠️ 部署到 Netlify 后需要开启一次认证，见本文件末尾的说明。
 # ============================================================
 
@@ -34,7 +39,6 @@ collections:
     folder: "src/content/blog"
     create: true # 允许新建
     delete: true # 允许删除（这就是你要的删除入口）
-    publish: true
     extension: md
     format: frontmatter
     # 文件名由标题自动生成

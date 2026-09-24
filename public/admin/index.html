@@ -9,15 +9,15 @@
   </head>
   <body>
     <!--
-      Sveltia CMS —— Decap CMS 的现代替代实现。
-      只需这一个 script 标签，界面和配置全部由同目录的 config.yml 决定。
+      Decap CMS —— 注意这里【不能】用 Sveltia CMS。
+      Sveltia 只支持 github / gitlab / gitea / test-repo 四种后端，
+      明确不支持 Netlify 的 Git Gateway；用它会直接报
+      "backend.name 选项必须是以下值之一…"。
 
-      它加载后会自动读取 ./config.yml，要求你登录 GitHub（或 Netlify Identity），
-      然后就能在网页上新建 / 修改 / 删除文章，改动会直接提交到仓库。
+      Decap 是 Git Gateway 的原生支持者，所以我们用 Netlify Identity 登录。
+
+      界面与可编辑范围全部由同目录的 config.yml 决定。
     -->
-    <script
-      src="https://cdn.jsdelivr.net/npm/@sveltia/cms/dist/sveltia-cms.js"
-      type="module"
-    ></script>
+    <script src="https://cdn.jsdelivr.net/npm/decap-cms@^3.0.0/dist/decap-cms.js"></script>
   </body>
 </html>
