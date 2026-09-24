@@ -133,6 +133,33 @@ const SITE = process.env.SITE_URL ?? "https://你拿到的域名.netlify.app";
 
 写一篇新文章 → `git add -A && git commit -m "新文章" && git push` → 等一分钟 → 上线。
 
+### 4.3 追番页的「更新列表」按钮（要配一个环境变量）
+
+追番页上那个按钮背后是一个 Netlify 函数（`netlify/functions/bangumi.mjs`）。
+
+**为什么不能直接在浏览器里拉 Bangumi：**
+你的 Bangumi 收藏是**私密**的，不带令牌去请求，API 会返回 0 条（而不是报错）；
+而且国内网络本身也访问不到 `api.bgm.tv`。所以必须让 Netlify 的服务器
+带着令牌去拉 —— 它在境外，直连 Bangumi，也不用挂代理。
+
+**配置步骤（只做一次）：**
+
+1. Netlify 后台 → **Site configuration → Environment variables**
+2. 添加变量：
+   - Key：`BANGUMI_TOKEN`
+   - Value：你的 Bangumi 访问令牌（就是给 GitHub Actions 用的那串）
+3. 可选：`BANGUMI_USERNAME`，默认 `765864`，一般不用加
+4. **Deploys → Trigger deploy → Deploy site** 重新部署一次
+   （环境变量对已经在跑的部署不生效，必须重新部署）
+
+配好后打开 `/bangumi`，点「更新列表」，状态栏会显示「✓ 已同步，共 N 条」。
+
+**如果状态栏报「服务器没有配置 BANGUMI_TOKEN」** → 第 2 步没做，或没重新部署。
+**如果报「拉到了 0 条」** → 令牌失效了，去 Bangumi 设置里重新生成。
+
+> 静态首屏用的仍是构建时的 `src/data/bangumi.json`（由 `scripts/fetch-bangumi.mjs`
+> 生成，GitHub Actions 每天跑一次）。函数只在点按钮时才被调用，不写盘、不提交 git。
+
 ---
 
 ## 5. 部署后自查清单
