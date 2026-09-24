@@ -8,49 +8,71 @@
     <title>内容管理 · 言与叶之庭</title>
     <style>
       /*
-        返回主页按钮。
-        做成固定悬浮，而不是注入 Decap 的界面里 ——
-        Decap 是 React 应用，DOM 结构会随版本变化，
+        后台右下角的悬浮工具条。
+        做成固定悬浮层，而不是注入 Decap 的 DOM ——
+        Decap 是 React 应用，界面结构会随版本变化，
         直接塞进去很容易在升级后失效；悬浮层则一直有效。
-        放在右下角，避开它自己的顶栏（快速新建 / 头像）和左侧集合列表。
+        位置选右下角，避开它的顶栏（快速新建 / 头像）和左侧集合列表。
       */
-      #back-home {
+      #admin-tools {
         position: fixed;
         right: 20px;
         bottom: 20px;
         z-index: 2147483000; /* 高于 Decap 的所有浮层 */
+        display: flex;
+        flex-direction: column;
+        align-items: flex-end;
+        gap: 10px;
+        font-family: "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei",
+          "WenQuanYi Micro Hei", sans-serif;
+      }
+      #admin-tools a {
         display: inline-flex;
         align-items: center;
         gap: 6px;
-        padding: 9px 16px;
-        font-family: "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei",
-          "WenQuanYi Micro Hei", sans-serif;
+        padding: 10px 16px;
         font-size: 14px;
         font-weight: 700;
         line-height: 1;
-        color: #222;
-        background: #fff;
+        text-decoration: none;
         border: 2px solid #222;
         border-radius: 8px;
-        text-decoration: none;
+        background: #fff;
+        color: #222;
         box-shadow: 0 6px 16px rgba(0, 0, 0, 0.14);
         transition: all 0.15s ease;
+        white-space: nowrap;
       }
-      #back-home:hover {
+      #admin-tools a:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 10px 22px rgba(0, 0, 0, 0.2);
+      }
+      #admin-tools a:active {
+        transform: translateY(0);
+      }
+      /* Word 导入是主动作，用主色突出 */
+      #admin-tools a.primary {
         background: #316fd3;
         border-color: #316fd3;
         color: #fff;
-        transform: translateY(-2px);
-        box-shadow: 0 10px 22px rgba(49, 111, 211, 0.35);
       }
-      #back-home:active {
-        transform: translateY(0);
+      #admin-tools a.primary:hover {
+        background: #2655b9;
+        border-color: #2655b9;
+        box-shadow: 0 10px 22px rgba(49, 111, 211, 0.4);
       }
-      /* 小屏上缩小一点，别挡住内容 */
+      #admin-tools a.ghost:hover {
+        background: #222;
+        color: #fff;
+      }
+      /* 小屏上缩小，别挡内容 */
       @media (max-width: 600px) {
-        #back-home {
+        #admin-tools {
           right: 12px;
           bottom: 12px;
+          gap: 8px;
+        }
+        #admin-tools a {
           padding: 8px 12px;
           font-size: 13px;
         }
@@ -66,7 +88,15 @@
     -->
     <script src="https://cdn.jsdelivr.net/npm/decap-cms@^3.0.0/dist/decap-cms.js"></script>
 
-    <!-- 返回主页：放在 Decap 脚本之后，确保它渲染在最上层 -->
-    <a id="back-home" href="/" title="回到博客首页">← 返回主页</a>
+    <!-- 悬浮工具条：放在 Decap 脚本之后，确保渲染在最上层 -->
+    <div id="admin-tools">
+      <a
+        class="primary"
+        href="/admin/word"
+        title="把 Word (.docx) 转成 Markdown 再贴进文章"
+        >📄 Word 导入</a
+      >
+      <a class="ghost" href="/" title="回到博客首页">← 返回主页</a>
+    </div>
   </body>
 </html>

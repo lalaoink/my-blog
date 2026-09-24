@@ -47,6 +47,7 @@ async function resolveToFile(url) {
   const candidates = [
     join(DIST, rel), // 静态资源：/pet/idle.png
     join(DIST, rel, "index.html"), // 目录式路由：/posts → /posts/index.html
+    join(DIST, rel + ".html"), // Netlify 的 pretty URL：/admin/word → /admin/word.html
   ];
   for (const c of candidates) {
     if (await exists(c)) return true;
