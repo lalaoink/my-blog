@@ -479,10 +479,143 @@
         async function getToken() {
           var u = currentUser();
           if (!u) throw new Error("尚未登录");
-          // Netlify Identity 的 jwt() 返回 Promise
           if (typeof u.jwt === "function") return await u.jwt();
           if (u.token && u.token.access_token) return u.token.access_token;
           throw new Error("拿不到访问令牌，请重新登录");
+        }
+
+        /**
+         * 把文件写进仓库。
+         *
+         * ⚠️ 不能用 GitHub 的「Contents API」（PUT /repos/.../contents/...）。
+         *    Netlify 的 Git Gateway 明确封禁了这个接口，实测返回：
+         *    "Access to endpoint not allowed: this part of GitHub's API has been restricted."
+         *
+         *    Decap CMS 自己走的是 Git Data API，四步：
+         *      blob → tree → commit → 移动分支指针
+         *    这里完全照搬它的调用方式（含路径格式）。
+         */
+        async function pushFile(token, path, text, message) {
+          // 网关对 base 路径的接受形式不确定：
+          // 标准 GitHub 形式是 /repos/{owner}/{repo}；
+          // 而 Decap 实际发的是 /repos/（它配置里 repo 为空，由网关自己补）。
+          // 两种都试一遍，哪个通用哪个。
+          var bases = [
+            GATEWAY + "/repos/" + REPO,
+            GATEWAY + "/repos/",
+          ];
+          var lastErr = null;
+          for (var i = 0; i < bases.length; i++) {
+            try {
+              return await gitDataPush(bases[i], token, path, text, message);
+            } catch (e) {
+              lastErr = e;
+              var msg = String((e && e.message) || "");
+              // 只有"接口不被允许/找不到"才换下一种；
+              // 权限类错误换路径也没用，直接抛出。
+              if (!/not allowed|restricted|restricted|404|Not Found/i.test(msg)) throw e;
+            }
+          }
+          throw lastErr;
+        }
+
+        async function gitDataPush(base, token, path, text, message) {
+          var H = { Authorization: "Bearer " + token };
+          var JH = {
+            Authorization: "Bearer " + token,
+            "Content-Type": "application/json",
+          };
+
+          async function call(p, init, what) {
+            var res = await fetch(base + p, init);
+            var j = await res.json().catch(function () { return {}; });
+            if (!res.ok) {
+              throw new Error(
+                what + " 失败（HTTP " + res.status + "）" +
+                  (j.message || j.msg ? "：" + (j.message || j.msg) : "")
+              );
+            }
+            return j;
+          }
+
+          // 1) 当前分支指向哪个 commit
+          var br = await call(
+            "/branches/" + encodeURIComponent(BRANCH),
+            { headers: H },
+            "读取分支"
+          );
+          var parentSha = br.commit && br.commit.sha;
+          if (!parentSha) throw new Error("读不到分支的 commit sha");
+
+          // 2) 把内容存成 blob
+          var blob = await call(
+            "/git/blobs",
+            {
+              method: "POST",
+              headers: JH,
+              body: JSON.stringify({ content: b64(text), encoding: "base64" }),
+            },
+            "创建 blob"
+          );
+          if (!blob.sha) throw new Error("blob 没有返回 sha");
+
+          // 3) 基于当前树建一棵新树（只替换目标文件）
+          var tree = await call(
+            "/git/trees",
+            {
+              method: "POST",
+              headers: JH,
+              body: JSON.stringify({
+                base_tree: parentSha,
+                tree: [{ path: path, mode: "100644", type: "blob", sha: blob.sha }],
+              }),
+            },
+            "创建 tree"
+          );
+
+          // 4) 建提交
+          var commit = await call(
+            "/git/commits",
+            {
+              method: "POST",
+              headers: JH,
+              body: JSON.stringify({
+                message: message,
+                tree: tree.sha,
+                parents: [parentSha],
+              }),
+            },
+            "创建 commit"
+          );
+
+          // 5) 把分支指针移到新提交
+          await call(
+            "/git/refs/heads/" + encodeURIComponent(BRANCH),
+            {
+              method: "PATCH",
+              headers: JH,
+              body: JSON.stringify({ sha: commit.sha, force: false }),
+            },
+            "更新分支"
+          );
+
+          return commit.sha;
+        }
+
+        /** 尝试读出已有文件内容，用于「已存在」提示。
+         *  读接口可能也被网关限制，取不到就当作不存在，不阻断流程。 */
+        async function readExisting(path) {
+          try {
+            var token = await getToken();
+            var res = await fetch(
+              GATEWAY + "/repos/" + REPO + "/contents/" + path + "?ref=" + BRANCH,
+              { headers: { Authorization: "Bearer " + token } }
+            );
+            if (res.ok) return await res.json();
+          } catch (e) {
+            /* 忽略 */
+          }
+          return null;
         }
 
         $("btn-publish").addEventListener("click", async function () {
@@ -494,19 +627,11 @@
 
           try {
             var meta = buildMeta();
-            var token = await getToken();
             var path = CONTENT_DIR + "/" + meta.slug + ".md";
-            var headers = { Authorization: "Bearer " + token };
 
-            // 先查是否已存在 —— 存在的话必须带 sha 才能更新
-            var sha = null;
-            var getRes = await fetch(
-              GATEWAY + "/repos/" + REPO + "/contents/" + path + "?ref=" + BRANCH,
-              { headers: headers }
-            );
-            if (getRes.ok) {
-              var existing = await getRes.json();
-              sha = existing.sha || null;
+            // 已存在就提醒一次（读不到就跳过检查）
+            var existing = await readExisting(path);
+            if (existing) {
               if (!confirm(
                 "已经存在同名文章：\n" + path +
                 "\n\n继续会【覆盖】它。确定吗？\n\n（点「取消」可以改上面的文件名再试）"
@@ -516,59 +641,35 @@
               }
             }
 
-            var body = {
-              message: (sha ? "更新文章：" : "新增文章：") + meta.title,
-              content: b64(meta.text),
-              branch: BRANCH,
-            };
-            if (sha) body.sha = sha;
-
-            var putRes = await fetch(
-              GATEWAY + "/repos/" + REPO + "/contents/" + path,
-              {
-                method: "PUT",
-                headers: Object.assign({ "Content-Type": "application/json" }, headers),
-                body: JSON.stringify(body),
-              }
+            var token = await getToken();
+            var commitSha = await pushFile(
+              token,
+              path,
+              meta.text,
+              (existing ? "更新文章：" : "新增文章：") + meta.title
             );
-            var putJson = await putRes.json().catch(function () { return {}; });
 
-            if (!putRes.ok) {
-              throw new Error(
-                (putJson && (putJson.message || putJson.msg)) ||
-                  ("HTTP " + putRes.status)
-              );
-            }
-
-            setPub(
-              "🎉 发布成功！文章已写入仓库：" + path +
-                "\nNetlify 正在重新构建，约 1 分钟后访问 /posts/" + meta.slug + " 即可看到。" +
-                "（本页面下方也给了文章链接）",
-              "ok"
-            );
-            // 给一个可点的链接
+            pubStatus.className = "status ok";
             pubStatus.innerHTML =
               "🎉 <b>发布成功！</b>已写入 <code>" + path + "</code><br />" +
+              "提交：<code>" + commitSha.slice(0, 8) + "</code><br />" +
               "Netlify 正在重新构建，约 <b>1 分钟</b>后可访问：<br />" +
               '<a href="/posts/' + meta.slug + '/" target="_blank" rel="noopener">' +
               "/posts/" + meta.slug + "/</a><br /><br />" +
               '也可以去 <a href="/admin/">内容管理</a> 里继续编辑这篇。';
           } catch (err) {
             var msg = err && err.message ? err.message : String(err);
-            if (/401|403|permission|token/i.test(msg)) {
-              setPub(
-                "发布失败：" + msg +
-                  "\n\n看起来是登录状态的问题。点上方「登录」重新登录后再试；" +
-                  "或者直接用下面的「复制 Markdown」走老流程。",
-                "err"
-              );
+            var hint = "";
+            if (/401|403|permission|token|登录/i.test(msg)) {
+              hint = "看起来是登录状态的问题：点上方「登录」重新登录后再试。";
+            } else if (/not allowed|restricted/i.test(msg)) {
+              hint = "网关拒绝了这次调用。请把这段错误原文发我，我按具体接口调整。";
             } else {
-              setPub(
-                "发布失败：" + msg +
-                  "\n\n可以改用「复制 Markdown」走老流程（打开内容管理 → + 文章 → 粘贴）。",
-                "err"
-              );
+              hint = "可以改用「复制 Markdown」走老流程（内容管理 → + 文章 → 粘贴）。";
             }
+            pubStatus.className = "status err";
+            pubStatus.innerHTML =
+              "发布失败：" + msg + "<br /><br />" + hint;
           } finally {
             btn.disabled = !currentUser();
             btn.textContent = oldLabel;

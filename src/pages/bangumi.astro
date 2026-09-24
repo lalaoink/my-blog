@@ -27,6 +27,9 @@ const fmtDate = (s: string) => {
   if (isNaN(d.valueOf())) return "";
   return `${d.getFullYear()}/${String(d.getMonth() + 1).padStart(2, "0")}/${String(d.getDate()).padStart(2, "0")}`;
 };
+
+// 首屏直接用构建时的静态数据渲染（下面那套标签就是）。
+// 点「更新列表」时才调 /api/bangumi 拉实时数据，然后原地替换列表内容。
 ---
 
 <BaseLayout title="追番" description="我的 Bangumi 追番列表">
@@ -34,101 +37,398 @@ const fmtDate = (s: string) => {
 
   <p>
     数据来自 <a href={`https://bgm.tv/user/${data.username}`} rel="noopener">Bangumi 番组计划</a>。
-    每次构建时拉取一次，缓存成静态数据。
+    每次构建时拉取一次，缓存成静态数据；点下面的按钮可以随时拉最新的。
   </p>
 
-  {
-    fetchedAt && (
-      <p style="font-size:.88em;color:var(--gray)">
-        数据更新于 <time>{fmtDate(fetchedAt.toISOString())}</time>
-      </p>
-    )
-  }
+  <p class="bgm-toolbar">
+    <button id="bgm-refresh" class="bgm-btn" type="button">
+      <svg
+        class="bgm-icon"
+        viewBox="0 0 24 24"
+        width="15"
+        height="15"
+        fill="none"
+        stroke="currentColor"
+        stroke-width="2.4"
+        stroke-linecap="round"
+        stroke-linejoin="round"
+        aria-hidden="true"
+      >
+        <path d="M20.5 12a8.5 8.5 0 1 1-2.6-6.1" />
+        <path d="M20.8 4.4v4.9h-4.9" />
+      </svg><span id="bgm-label">更新列表</span>
+    </button>
+    <span id="bgm-status" class="bgm-status" role="status" aria-live="polite"></span>
+  </p>
 
-  {
-    items.length === 0 ? (
-      <div class="empty-state">
-        <h2 style="margin-top:0">目前还没有公开的收藏</h2>
-        <p>
-          Bangumi 账号
-          <a href={`https://bgm.tv/user/${data.username}`} rel="noopener">
-            {data.username}
-          </a>
-          的动画收藏是空的，所以这里也没有东西可以显示。
-        </p>
-        <p style="font-size:.92em">
-          去 Bangumi 把几部动画标成「在看」或「看过」，然后重新运行：
-        </p>
-        <pre
-          style="text-align:left;background:#f6f6f4;border:2px solid var(--very-dark-gray);border-radius:8px;padding:10px;overflow-x:auto;font-size:.85em"
-        ><code>$env:HTTPS_PROXY="http://127.0.0.1:7897"
+  <p id="bgm-fetched" class="bgm-fetched">
+    {fetchedAt && <>数据更新于 <time>{fmtDate(fetchedAt.toISOString())}</time></>}
+  </p>
+
+  <div id="bgm-body">
+    {
+      items.length === 0 ? (
+        <div class="empty-state">
+          <h2 style="margin-top:0">目前还没有公开的收藏</h2>
+          <p>
+            Bangumi 账号
+            <a href={`https://bgm.tv/user/${data.username}`} rel="noopener">
+              {data.username}
+            </a>
+            的动画收藏是空的，所以这里也没有东西可以显示。
+          </p>
+          <p style="font-size:.92em">
+            去 Bangumi 把几部动画标成「在看」或「看过」，然后重新运行：
+          </p>
+          <pre
+            style="text-align:left;background:#f6f6f4;border:2px solid var(--very-dark-gray);border-radius:8px;padding:10px;overflow-x:auto;font-size:.85em"
+          ><code>$env:HTTPS_PROXY="http://127.0.0.1:7897"
 $env:NODE_USE_ENV_PROXY="1"
 node scripts/fetch-bangumi.mjs</code></pre>
-        <p style="font-size:.88em">
-          刷新页面即可看到你的追番墙。<br />
-          若收藏设为私密，需要在 Bangumi 设置里改为公开，或改用 access token。
-        </p>
-      </div>
-    ) : (
-      <>
-        <p>
-          {GROUPS.filter((g) => (counts[g.key] ?? 0) > 0).map((g) => (
-            <span class="tag">
-              {g.label} {(counts[g.key] ?? 0)}
-            </span>
-          ))}
-        </p>
-
-        <div class="slide-enter-content">
-          {grouped.map((group) => (
-            <section>
-              <h2>
-                {group.label}
-                <span style="font-size:.62em;font-weight:400;color:var(--gray)">
-                  {" "}
-                  · {group.items.length}
-                </span>
-              </h2>
-              <div class="bgm-grid">
-                {group.items.map((it) => (
-                  <a
-                    class="bgm-card"
-                    href={`https://bgm.tv/subject/${it.id}`}
-                    target="_blank"
-                    rel="noopener"
-                  >
-                    <div class="bgm-cover">
-                      {it.cover ? (
-                        <img src={it.cover} alt={it.nameCn || it.name} loading="lazy" />
-                      ) : (
-                        <div class="bgm-nocover">无封面</div>
-                      )}
-                    </div>
-                    <div class="bgm-info">
-                      <div class="bgm-name">{it.nameCn || it.name}</div>
-                      <div class="bgm-sub">{it.nameCn ? it.name : ""}</div>
-                      <div class="bgm-meta">
-                        {it.eps > 0 && <span>{it.epStatus}/{it.eps} 集</span>}
-                        {it.score > 0 && <span>★ {it.score}</span>}
-                        {it.myRate > 0 && <span class="bgm-myrate">我 {it.myRate}</span>}
-                      </div>
-                    </div>
-                  </a>
-                ))}
-              </div>
-            </section>
-          ))}
+          <p style="font-size:.88em">
+            刷新页面即可看到你的追番墙。<br />
+            若收藏设为私密，需要在 Bangumi 设置里改为公开，或改用 access token。
+          </p>
         </div>
-      </>
-    )
-  }
+      ) : (
+        <>
+          <p>
+            {GROUPS.filter((g) => (counts[g.key] ?? 0) > 0).map((g) => (
+              <span class="tag">
+                {g.label} {(counts[g.key] ?? 0)}
+              </span>
+            ))}
+          </p>
+
+          <div class="slide-enter-content">
+            {grouped.map((group) => (
+              <section>
+                <h2>
+                  {group.label}
+                  <span style="font-size:.62em;font-weight:400;color:var(--gray)">
+                    {" "}
+                    · {group.items.length}
+                  </span>
+                </h2>
+                <div class="bgm-grid">
+                  {group.items.map((it) => (
+                    <a
+                      class="bgm-card"
+                      href={`https://bgm.tv/subject/${it.id}`}
+                      target="_blank"
+                      rel="noopener"
+                    >
+                      <div class="bgm-cover">
+                        {it.cover ? (
+                          <img src={it.cover} alt={it.nameCn || it.name} loading="lazy" />
+                        ) : (
+                          <div class="bgm-nocover">无封面</div>
+                        )}
+                      </div>
+                      <div class="bgm-info">
+                        <div class="bgm-name">{it.nameCn || it.name}</div>
+                        <div class="bgm-sub">{it.nameCn ? it.name : ""}</div>
+                        <div class="bgm-meta">
+                          {it.eps > 0 && <span>{it.epStatus}/{it.eps} 集</span>}
+                          {it.score > 0 && <span>★ {it.score}</span>}
+                          {it.myRate > 0 && <span class="bgm-myrate">我 {it.myRate}</span>}
+                        </div>
+                      </div>
+                    </a>
+                  ))}
+                </div>
+              </section>
+            ))}
+          </div>
+        </>
+      )
+    }
+  </div>
 
   <p style="margin-top:24px">
     <a class="pushable" href="/">← 回到首页</a>
   </p>
 </BaseLayout>
 
+<script>
+  // ============================================================
+  //  「更新列表」→ 调 /api/bangumi，把页面上的列表原地换掉。
+  //
+  //  为什么走服务器：你的 Bangumi 收藏是私密的，浏览器直连 api.bgm.tv
+  //  既拿不到数据（没 token），国内也访问不了。Netlify 函数在境外，
+  //  带着服务器上的 BANGUMI_TOKEN 去拉，再把结果回给浏览器。
+  // ============================================================
+  const GROUPS = [
+    { key: "在看", label: "在看" },
+    { key: "想看", label: "想看" },
+    { key: "看过", label: "看过" },
+    { key: "搁置", label: "搁置" },
+    { key: "抛弃", label: "抛弃" },
+  ];
+
+  const $ = (id) => document.getElementById(id);
+
+  // netlify/functions/bangumi.mjs 的地址。
+  // 正常是 netlify.toml 里声明的 /api/bangumi；
+  // 万一 Netlify 没按 v2 函数识别（自定义路径就不生效），退回默认地址。
+  const API_URL = "/api/bangumi";
+  const API_FALLBACK = "/.netlify/functions/bangumi";
+
+  /** 极简 DOM 构造器，避免用 innerHTML 拼用户数据（防注入） */
+  function el(tag, props, ...children) {
+    const node = document.createElement(tag);
+    if (props) {
+      for (const [k, v] of Object.entries(props)) {
+        if (v == null || v === false) continue;
+        if (k === "class") node.className = v;
+        else if (k === "text") node.textContent = v;
+        else node.setAttribute(k, v);
+      }
+    }
+    for (const c of children.flat()) {
+      if (c == null || c === false) continue;
+      node.appendChild(typeof c === "string" ? document.createTextNode(c) : c);
+    }
+    return node;
+  }
+
+  function fmtDate(s) {
+    if (!s) return "";
+    const d = new Date(s);
+    if (isNaN(d.valueOf())) return "";
+    const p = (n) => String(n).padStart(2, "0");
+    return `${d.getFullYear()}/${p(d.getMonth() + 1)}/${p(d.getDate())}`;
+  }
+
+  function card(it) {
+    const cover = it.cover
+      ? el("img", { src: it.cover, alt: it.nameCn || it.name, loading: "lazy" })
+      : el("div", { class: "bgm-nocover", text: "无封面" });
+
+    const meta = el("div", { class: "bgm-meta" });
+    if (it.eps > 0) meta.appendChild(el("span", { text: `${it.epStatus}/${it.eps} 集` }));
+    if (it.score > 0) meta.appendChild(el("span", { text: `★ ${it.score}` }));
+    if (it.myRate > 0)
+      meta.appendChild(el("span", { class: "bgm-myrate", text: `我 ${it.myRate}` }));
+
+    return el(
+      "a",
+      {
+        class: "bgm-card",
+        href: `https://bgm.tv/subject/${it.id}`,
+        target: "_blank",
+        rel: "noopener",
+      },
+      el("div", { class: "bgm-cover" }, cover),
+      el(
+        "div",
+        { class: "bgm-info" },
+        el("div", { class: "bgm-name", text: it.nameCn || it.name }),
+        el("div", { class: "bgm-sub", text: it.nameCn ? it.name : "" }),
+        meta
+      )
+    );
+  }
+
+  function renderBody(payload) {
+    const body = $("bgm-body");
+    if (!body) return;
+    body.textContent = "";
+
+    const items = payload.items ?? [];
+    if (items.length === 0) {
+      body.appendChild(
+        el(
+          "div",
+          { class: "empty-state" },
+          el("h2", { style: "margin-top:0", text: "没有拉到任何收藏" }),
+          el("p", {
+            text:
+              payload.warning ||
+              "这个账号目前没有公开的动画收藏，或者访问令牌失效了。",
+          })
+        )
+      );
+      return;
+    }
+
+    const counts = payload.counts ?? {};
+    const tags = el("p");
+    for (const g of GROUPS) {
+      const n = counts[g.key] ?? 0;
+      if (n > 0) tags.appendChild(el("span", { class: "tag", text: `${g.label} ${n}` }));
+    }
+    body.appendChild(tags);
+
+    const wrap = el("div", { class: "slide-enter-content" });
+    for (const g of GROUPS) {
+      const list = items.filter((i) => i.collectionLabel === g.key);
+      if (list.length === 0) continue;
+      const grid = el("div", { class: "bgm-grid" });
+      for (const it of list) grid.appendChild(card(it));
+      wrap.appendChild(
+        el(
+          "section",
+          null,
+          el(
+            "h2",
+            null,
+            g.label,
+            el("span", {
+              style: "font-size:.62em;font-weight:400;color:var(--gray)",
+              text: ` · ${list.length}`,
+            })
+          ),
+          grid
+        )
+      );
+    }
+    body.appendChild(wrap);
+  }
+
+  function renderFetched(payload) {
+    const p = $("bgm-fetched");
+    if (!p) return;
+    p.textContent = "";
+    const d = fmtDate(payload.fetchedAt);
+    if (!d) return;
+    p.appendChild(document.createTextNode("数据更新于 "));
+    p.appendChild(el("time", { text: d }));
+  }
+
+  async function refresh() {
+    const btn = $("bgm-refresh");
+    const status = $("bgm-status");
+    if (!btn || !status) return;
+
+    const label = $("bgm-label");
+    btn.disabled = true;
+    btn.classList.add("syncing");
+    if (label) label.textContent = "同步中…";
+    status.className = "bgm-status";
+    status.textContent = "正在从 Bangumi 拉取…";
+
+    // 服务器要去境外访问，给宽一点，但别无限等
+    const ac = new AbortController();
+    const timer = setTimeout(() => ac.abort(), 25000);
+
+    try {
+      const opts = { signal: ac.signal, headers: { Accept: "application/json" } };
+      let res = await fetch(`${API_URL}?refresh=1`, opts);
+      if (res.status === 404) {
+        res = await fetch(`${API_FALLBACK}?refresh=1`, opts);
+      }
+      const payload = await res.json().catch(() => ({}));
+
+      if (!res.ok) {
+        throw new Error(payload.error || payload.detail || `HTTP ${res.status}`);
+      }
+
+      renderBody(payload);
+      renderFetched(payload);
+
+      status.className = "bgm-status ok";
+      status.textContent = payload.warning
+        ? `⚠ ${payload.warning}`
+        : `✓ 已同步，共 ${payload.total} 条`;
+    } catch (err) {
+      const msg =
+        err && err.name === "AbortError"
+          ? "超时了（25 秒没响应）。可能是服务器访问 Bangumi 太慢，稍后再试。"
+          : (err && err.message) || String(err);
+      status.className = "bgm-status err";
+      status.textContent = `同步失败：${msg}`;
+      console.error("[bangumi]", err);
+    } finally {
+      clearTimeout(timer);
+      btn.disabled = false;
+      btn.classList.remove("syncing");
+      if (label) label.textContent = "更新列表";
+    }
+  }
+
+  const refreshBtn = $("bgm-refresh");
+  if (refreshBtn) refreshBtn.addEventListener("click", refresh);
+</script>
+
 <style>
+  .bgm-toolbar {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    flex-wrap: wrap;
+    margin: 1em 0 0.4em;
+  }
+
+  .bgm-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    font: inherit;
+    font-size: 0.92em;
+    font-weight: 700;
+    padding: 6px 14px;
+    color: var(--very-dark-gray);
+    background: var(--sand-yellow);
+    border: 2px solid var(--very-dark-gray);
+    border-radius: 8px;
+    cursor: pointer;
+    box-shadow: 0 3px 0 var(--very-dark-gray);
+    transition:
+      transform 0.12s,
+      box-shadow 0.12s,
+      background 0.12s;
+  }
+  .bgm-icon {
+    flex: none;
+  }
+  .bgm-btn.syncing .bgm-icon {
+    animation: bgm-spin 0.9s linear infinite;
+  }
+  @keyframes bgm-spin {
+    to {
+      transform: rotate(360deg);
+    }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .bgm-btn.syncing .bgm-icon {
+      animation: none;
+    }
+  }
+  .bgm-btn:hover:not(:disabled) {
+    background: #f8f19a;
+    transform: translateY(-1px);
+    box-shadow: 0 4px 0 var(--very-dark-gray);
+  }
+  .bgm-btn:active:not(:disabled) {
+    transform: translateY(2px);
+    box-shadow: 0 1px 0 var(--very-dark-gray);
+  }
+  .bgm-btn:disabled {
+    cursor: progress;
+    opacity: 0.65;
+    box-shadow: 0 1px 0 var(--very-dark-gray);
+    transform: translateY(2px);
+  }
+
+  .bgm-status {
+    font-size: 0.86em;
+    color: var(--gray);
+  }
+  .bgm-status.ok {
+    color: var(--sea-blue);
+  }
+  .bgm-status.err {
+    color: #c0392b;
+  }
+
+  .bgm-fetched {
+    font-size: 0.88em;
+    color: var(--gray);
+    margin-top: 0;
+    min-height: 1em;
+  }
+
   .bgm-grid {
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));

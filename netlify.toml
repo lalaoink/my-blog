@@ -11,6 +11,14 @@
   # 构建时使用 Node 22（和本地开发保持一致的大版本）
   NODE_VERSION = "22"
 
+# 追番页「更新列表」按钮背后的接口：/api/bangumi
+#
+# 这是个 Netlify 函数（不是静态文件），因为它必须带 BANGUMI_TOKEN
+# 在服务器端调 Bangumi —— 你的收藏是私密的，浏览器直接请求拿不到数据。
+# 逻辑在 netlify/functions/bangumi.mjs，抓取核心复用 scripts/bangumi-core.mjs。
+[functions]
+  directory = "netlify/functions"
+
 # 让 Astro 的产物缓存策略更合理：
 # _astro/ 里的文件名带内容哈希，所以可以长期缓存。
 [[headers]]
