@@ -6,18 +6,67 @@
     <!-- 管理后台不该被搜索引擎收录 -->
     <meta name="robots" content="noindex, nofollow" />
     <title>内容管理 · 言与叶之庭</title>
+    <style>
+      /*
+        返回主页按钮。
+        做成固定悬浮，而不是注入 Decap 的界面里 ——
+        Decap 是 React 应用，DOM 结构会随版本变化，
+        直接塞进去很容易在升级后失效；悬浮层则一直有效。
+        放在右下角，避开它自己的顶栏（快速新建 / 头像）和左侧集合列表。
+      */
+      #back-home {
+        position: fixed;
+        right: 20px;
+        bottom: 20px;
+        z-index: 2147483000; /* 高于 Decap 的所有浮层 */
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        padding: 9px 16px;
+        font-family: "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei",
+          "WenQuanYi Micro Hei", sans-serif;
+        font-size: 14px;
+        font-weight: 700;
+        line-height: 1;
+        color: #222;
+        background: #fff;
+        border: 2px solid #222;
+        border-radius: 8px;
+        text-decoration: none;
+        box-shadow: 0 6px 16px rgba(0, 0, 0, 0.14);
+        transition: all 0.15s ease;
+      }
+      #back-home:hover {
+        background: #316fd3;
+        border-color: #316fd3;
+        color: #fff;
+        transform: translateY(-2px);
+        box-shadow: 0 10px 22px rgba(49, 111, 211, 0.35);
+      }
+      #back-home:active {
+        transform: translateY(0);
+      }
+      /* 小屏上缩小一点，别挡住内容 */
+      @media (max-width: 600px) {
+        #back-home {
+          right: 12px;
+          bottom: 12px;
+          padding: 8px 12px;
+          font-size: 13px;
+        }
+      }
+    </style>
   </head>
   <body>
     <!--
-      Decap CMS —— 注意这里【不能】用 Sveltia CMS。
+      ⚠️ 必须用 Decap CMS，不能改成 Sveltia CMS。
       Sveltia 只支持 github / gitlab / gitea / test-repo 四种后端，
-      明确不支持 Netlify 的 Git Gateway；用它会直接报
-      "backend.name 选项必须是以下值之一…"。
-
-      Decap 是 Git Gateway 的原生支持者，所以我们用 Netlify Identity 登录。
-
-      界面与可编辑范围全部由同目录的 config.yml 决定。
+      明确不支持下面的 git-gateway，用它会直接报配置错误。
+      Decap 是 Git Gateway 的原生支持者。
     -->
     <script src="https://cdn.jsdelivr.net/npm/decap-cms@^3.0.0/dist/decap-cms.js"></script>
+
+    <!-- 返回主页：放在 Decap 脚本之后，确保它渲染在最上层 -->
+    <a id="back-home" href="/" title="回到博客首页">← 返回主页</a>
   </body>
 </html>
