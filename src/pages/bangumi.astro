@@ -28,6 +28,27 @@ const fmtDate = (s: string) => {
   return `${d.getFullYear()}/${String(d.getMonth() + 1).padStart(2, "0")}/${String(d.getDate()).padStart(2, "0")}`;
 };
 
+// 封面地址 → 走我们自己的代理。
+//
+// 为什么：Bangumi 的图放在 lain.bgm.tv，国内直连不通。不挂梯子的访客
+// 会看到一片破图。Netlify 的服务器在境外，由它取图再回传就没问题了。
+// 见 netlify/functions/bgm-cover.mjs。
+//
+// 只改 lain.bgm.tv，其它域名原样返回（以后换图床也不会坏）。
+// ⚠️ 下面浏览器脚本里有一份同样的函数，改的时候两边都要改。
+const coverSrc = (url: string | null) => {
+  if (!url) return null;
+  try {
+    const u = new URL(url);
+    if (u.hostname === "lain.bgm.tv") {
+      return `/api/bgm-cover?p=${encodeURIComponent(u.pathname)}`;
+    }
+  } catch {
+    /* 不是合法 URL 就原样返回 */
+  }
+  return url;
+};
+
 // 首屏直接用构建时的静态数据渲染（下面那套标签就是）。
 // 点「更新列表」时才调 /api/bangumi 拉实时数据，然后原地替换列表内容。
 ---
@@ -118,13 +139,6 @@ node scripts/fetch-bangumi.mjs</code></pre>
                       target="_blank"
                       rel="noopener"
                     >
-                      <div class="bgm-cover">
-                        {it.cover ? (
-                          <img src={it.cover} alt={it.nameCn || it.name} loading="lazy" />
-                        ) : (
-                          <div class="bgm-nocover">无封面</div>
-                        )}
-                      </div>
                       <div class="bgm-info">
                         <div class="bgm-name">{it.nameCn || it.name}</div>
                         <div class="bgm-sub">{it.nameCn ? it.name : ""}</div>
@@ -133,6 +147,18 @@ node scripts/fetch-bangumi.mjs</code></pre>
                           {it.score > 0 && <span>★ {it.score}</span>}
                           {it.myRate > 0 && <span class="bgm-myrate">我 {it.myRate}</span>}
                         </div>
+                      </div>
+                      <div class="bgm-cover">
+                        {it.cover ? (
+                          <img
+                            src={coverSrc(it.cover)}
+                            data-orig={it.cover}
+                            alt={it.nameCn || it.name}
+                            loading="lazy"
+                          />
+                        ) : (
+                          <div class="bgm-nocover">无封面</div>
+                        )}
                       </div>
                     </a>
                   ))}
@@ -200,9 +226,30 @@ node scripts/fetch-bangumi.mjs</code></pre>
     return `${d.getFullYear()}/${p(d.getMonth() + 1)}/${p(d.getDate())}`;
   }
 
+  // ⚠️ 和文件顶部 frontmatter 里的 coverSrc 是同一份逻辑，改的时候两边都要改。
+  // 封面的原始地址是 lain.bgm.tv（国内直连不通），
+  // 改成走 /api/bgm-cover 代理；原始地址存进 data-orig 做兜底。
+  function coverSrc(url) {
+    if (!url) return url;
+    try {
+      const u = new URL(url);
+      if (u.hostname === "lain.bgm.tv") {
+        return `/api/bgm-cover?p=${encodeURIComponent(u.pathname)}`;
+      }
+    } catch (e) {
+      /* 不是合法 URL 就原样返回 */
+    }
+    return url;
+  }
+
   function card(it) {
     const cover = it.cover
-      ? el("img", { src: it.cover, alt: it.nameCn || it.name, loading: "lazy" })
+      ? el("img", {
+          src: coverSrc(it.cover),
+          "data-orig": it.cover,
+          alt: it.nameCn || it.name,
+          loading: "lazy",
+        })
       : el("div", { class: "bgm-nocover", text: "无封面" });
 
     const meta = el("div", { class: "bgm-meta" });
@@ -219,14 +266,14 @@ node scripts/fetch-bangumi.mjs</code></pre>
         target: "_blank",
         rel: "noopener",
       },
-      el("div", { class: "bgm-cover" }, cover),
       el(
         "div",
         { class: "bgm-info" },
         el("div", { class: "bgm-name", text: it.nameCn || it.name }),
         el("div", { class: "bgm-sub", text: it.nameCn ? it.name : "" }),
         meta
-      )
+      ),
+      el("div", { class: "bgm-cover" }, cover)
     );
   }
 
@@ -349,9 +396,40 @@ node scripts/fetch-bangumi.mjs</code></pre>
 
   const refreshBtn = $("bgm-refresh");
   if (refreshBtn) refreshBtn.addEventListener("click", refresh);
+
+  // 封面兜底：代理挂了就退回原始的 lain.bgm.tv 地址
+  // （挂了梯子的访客反而能直接看到）。
+  //
+  // 用事件委托而不是给每个 img 挂 onerror：
+  //   1) error 事件不冒泡，所以必须在【捕获阶段】监听
+  //   2) 一个监听器同时管住首屏的和服务端渲染来的所有图片
+  document.addEventListener(
+    "error",
+    function (e) {
+      const img = e.target;
+      if (!img || img.tagName !== "IMG" || !img.dataset || !img.dataset.orig) return;
+      if (img.dataset.fallback) return; // 只退一次，避免死循环
+      img.dataset.fallback = "1";
+      img.src = img.dataset.orig;
+    },
+    true
+  );
 </script>
 
-<style>
+<!--
+  ⚠️ 这里必须是 is:global！
+
+  Astro 的 <style> 默认是「作用域样式」：它会给模板里的元素加上
+  data-astro-cid-xxxx 属性，并把选择器改写成 .bgm-card[data-astro-cid-xxxx]。
+
+  而「更新列表」按钮是用 document.createElement 现场建 DOM 的 ——
+  新建的元素身上没有这个属性，于是所有样式全部失效：
+  卡片塌成一行行纯文本，网格、边框、封面尺寸统统不见。
+  （2026-xx 线上就是这个症状。）
+
+  所以改成全局样式。类名都带 bgm- 前缀，不会污染其他页面。
+-->
+<style is:global>
   .bgm-toolbar {
     display: flex;
     align-items: center;
@@ -429,21 +507,25 @@ node scripts/fetch-bangumi.mjs</code></pre>
     min-height: 1em;
   }
 
+  /* ---------- 卡片墙 ----------
+     版式：横向网格排列，每张卡片【上文字、下封面】。
+     文字在上还有个好处：标题高度固定后，一整排卡片的顶边和封面顶边能对齐。 */
   .bgm-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+    grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
     gap: 14px;
-    margin-bottom: 1em;
+    margin-bottom: 1.4em;
   }
 
   .bgm-card {
-    display: block;
+    display: flex;
+    flex-direction: column;
     border: 2px solid var(--very-dark-gray);
     border-radius: 8px;
     overflow: hidden;
     color: inherit;
-    transition: all 0.18s cubic-bezier(0.45, 0.05, 0.55, 0.95);
     background: #fff;
+    transition: all 0.18s cubic-bezier(0.45, 0.05, 0.55, 0.95);
   }
   .bgm-card:hover {
     text-decoration: none;
@@ -452,6 +534,54 @@ node scripts/fetch-bangumi.mjs</code></pre>
     box-shadow: 0 6px 16px rgba(49, 111, 211, 0.18);
   }
 
+  /* 文字区（在上），下边框当作与封面之间的分隔线 */
+  .bgm-info {
+    padding: 7px 8px 8px;
+    border-bottom: 2px solid var(--very-dark-gray);
+  }
+
+  /* ★ 固定成两行高 —— 标题一行还是两行都不影响卡片总高，
+     这样同一排卡片的文字区和封面顶边才能对齐。 */
+  .bgm-name {
+    font-size: 0.86em;
+    font-weight: 700;
+    color: var(--very-dark-gray);
+    line-height: 1.3;
+    height: 2.6em;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+  .bgm-sub {
+    font-size: 0.72em;
+    color: var(--gray);
+    line-height: 1.25;
+    height: 1.25em;
+    margin-top: 2px;
+    display: -webkit-box;
+    -webkit-line-clamp: 1;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+  .bgm-meta {
+    font-size: 0.76em;
+    color: var(--gray);
+    line-height: 1.2;
+    height: 1.2em;
+    margin-top: 4px;
+    overflow: hidden;
+    white-space: nowrap;
+  }
+  .bgm-meta span {
+    margin-right: 6px;
+  }
+  .bgm-myrate {
+    color: var(--sea-blue);
+    font-weight: 700;
+  }
+
+  /* 封面（在下）。3:4 是动画封面的标准比例 */
   .bgm-cover {
     aspect-ratio: 3 / 4;
     background: #f3f3f1;
@@ -469,42 +599,5 @@ node scripts/fetch-bangumi.mjs</code></pre>
   .bgm-nocover {
     color: var(--gray);
     font-size: 0.8em;
-  }
-
-  .bgm-info {
-    padding: 6px 8px 8px;
-    border-top: 2px solid var(--very-dark-gray);
-  }
-  .bgm-name {
-    font-size: 0.86em;
-    font-weight: 700;
-    color: var(--very-dark-gray);
-    line-height: 1.3;
-    display: -webkit-box;
-    -webkit-line-clamp: 2;
-    -webkit-box-orient: vertical;
-    overflow: hidden;
-  }
-  .bgm-sub {
-    font-size: 0.72em;
-    color: var(--gray);
-    line-height: 1.25;
-    margin-top: 2px;
-    display: -webkit-box;
-    -webkit-line-clamp: 1;
-    -webkit-box-orient: vertical;
-    overflow: hidden;
-  }
-  .bgm-meta {
-    font-size: 0.76em;
-    color: var(--gray);
-    margin-top: 4px;
-    display: flex;
-    flex-wrap: wrap;
-    gap: 6px;
-  }
-  .bgm-myrate {
-    color: var(--sea-blue);
-    font-weight: 700;
   }
 </style>
